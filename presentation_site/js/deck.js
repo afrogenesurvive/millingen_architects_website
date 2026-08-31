@@ -111,12 +111,19 @@
         img.draggable = false;
         img.loading = "eager";
 
-        // Only add Ken Burns if explicitly enabled (default true)
-        if (KEN_BURNS && slide.kenBurns !== false) {
-          el.classList.add("slide--image");
+        // Check if this slide should be scrollable
+        if (slide.scrollable === true) {
+          media.classList.add("scrollable");
+          el.classList.add("slide--scrollable");
         } else {
-          el.classList.add("slide--image"); // Always add the class, but Ken Burns only if enabled in config
+          // Only add Ken Burns if explicitly enabled (default true) and not scrollable
+          if (KEN_BURNS && slide.kenBurns !== false) {
+            el.classList.add("slide--image");
+          }
         }
+
+        // Always add the image class
+        el.classList.add("slide--image");
 
         media.appendChild(img);
         el.appendChild(media);
@@ -133,10 +140,22 @@
           video.muted = true;
           video.autoplay = false;
           video.playsInline = true;
-          video.loop = true;
+          video.loop = false;
+          // video.loop = true;
           video.setAttribute("playsinline", "");
           video.setAttribute("webkit-playsinline", "");
           video.preload = "metadata";
+
+          video.addEventListener("ended", function () {
+            const slideId = slide.id;
+            const currentSlide = sequence[state.index];
+            if (currentSlide && currentSlide.id === slideId) {
+              if (state.autoplay && !state.iframeOpen) {
+                next(); // Advance to next slide
+              }
+            }
+          });
+
           media.appendChild(video);
         } else if (slide.provider === "youtube") {
           const wrapper = document.createElement("div");
@@ -284,6 +303,14 @@
   function restartAutoplay() {
     stopAutoplay();
     if (state.autoplay && !state.iframeOpen && sequence.length > 1) {
+      const currentSlide = sequence[state.index];
+
+      // If it's a video slide, don't set a timer - wait for the 'ended' event
+      if (currentSlide && currentSlide.type === "video") {
+        return; // No timer for video slides
+      }
+
+      // For non-video slides, use the normal delay
       state.timer = setTimeout(next, DELAY);
     }
   }

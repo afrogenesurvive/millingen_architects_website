@@ -50,6 +50,7 @@ window.DECK_CONFIG = {
         src: "assets/img/hero02.png",
         alt: "Placeholder hero — replace with your image",
       },
+      scrollable: true,
       // Uncomment + set target to add a "See more" CTA to this slide:
       // seeMore: { label: "See more", target: "site-portfolio" },
     },

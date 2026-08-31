@@ -105,6 +105,9 @@ body {
     visibility 0s;
 }
 
+/* Add these styles after the existing .slide-media styles */
+
+/* Original .slide-media styles remain unchanged */
 .slide-media {
   position: absolute;
   inset: 0;
@@ -112,20 +115,32 @@ body {
   background: #0a0a0e;
 }
 
-.slide-media::after {
-  /* legibility gradient under caption */
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0) 42%);
-  pointer-events: none;
-}
-
+/* Keep the existing img styles for non-scrollable images */
 .slide-media img {
   width: 100%;
-  /* height: 100%;
-  object-fit: cover; */
+  height: 100%;
+  object-fit: cover;
   user-select: none;
+}
+
+/* Add new class for scrollable images */
+.slide-media.scrollable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.slide-media.scrollable img {
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Keep the existing Ken Burns animation for non-scrollable images */
+.slide--image:not(.slide--scrollable) .slide-media img {
+  animation: kenburns 18s var(--ease-out) forwards;
 }
 
 /* Ken Burns — subtle slow zoom/pan on active image slides */
