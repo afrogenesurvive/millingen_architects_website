@@ -48,7 +48,7 @@
     returnToId: null, // slide id to return to when the iframe closes
     timer: null,
     touch: { x: 0, y: 0, active: false },
-    controlsOpen: true,
+    controlsOpen: false,
   };
 
   /* ------------------------------------------------------------ icons ---- */
@@ -714,6 +714,11 @@
       setAutoplay(cfg.autoplayDefault !== false);
       setLoop(cfg.loopDefault !== false);
       activate(0);
+
+      if (!state.controlsOpen) {
+        els.controlsToggle.classList.add("collapsed");
+        els.controlsPanel.classList.add("hidden");
+      }
     }
 
     // Set up load/error handlers for each image
