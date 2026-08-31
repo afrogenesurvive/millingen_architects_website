@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Placeholder project image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a2c22"/>
+      <stop offset="1" stop-color="#150f0a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e0a35a" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#e0a35a" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <path d="M1600 620 C 1100 500, 700 780, 0 640 L0 900 L1600 900 Z" fill="url(#glow)"/>
+  <g fill="none" stroke="#e0a35a" stroke-width="3" stroke-opacity="0.6">
+    <rect x="220" y="300" width="420" height="600"/>
+    <rect x="760" y="420" width="300" height="480"/>
+    <rect x="1180" y="250" width="260" height="650"/>
+    <path d="M220 420 l210 -160 210 160"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.16">
+    <path d="M280 500 h300 M280 570 h300 M280 640 h300 M280 710 h300 M280 780 h300"/>
+    <path d="M810 560 h200 M810 640 h200 M810 720 h200"/>
+    <path d="M1230 460 h160 M1230 540 h160 M1230 620 h160 M1230 700 h160"/>
+  </g>
+  <text x="1600" y="870" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="22" letter-spacing="3" fill="#ffffff" fill-opacity="0.4">PLACEHOLDER — replace with your image</text>
+</svg>

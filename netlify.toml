@@ -1,0 +1,12 @@
+# Netlify configuration
+#
+# This site is a zero-build static deck, so there is no build command —
+# Netlify just publishes the `presentation_site/` folder as-is.
+#
+# If you prefer to configure this in the Netlify UI instead:
+#   Build command : (none / "echo 'no build step'")
+#   Publish directory : presentation_site
+
+[build]
+  publish = "presentation_site"
+  command = "echo 'Static deck — no build step required.'"

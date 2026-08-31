@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Millingen Architects — presentation deck. Edit js/slides.config.js to change the slides."
+    />
+    <title>Millingen Architects — Presentation</title>
+
+    <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+    <link rel="preconnect" href="https://www.youtube.com" />
+
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+
+  <body>
+    <!--
+      Deck chrome. Slides themselves are injected by deck.js from
+      js/slides.config.js. Everything here is presentational and reusable.
+    -->
+    <main
+      id="deck"
+      class="deck"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Presentation"
+      aria-live="off"
+    >
+      <!-- slides are appended into this viewport -->
+      <div class="deck-viewport" id="deckViewport"></div>
+
+      <!-- brand / title (populated from config meta) -->
+      <header class="deck-brand" id="deckBrand"></header>
+
+      <!-- prev / next -->
+      <button
+        class="deck-arrow deck-arrow--prev glass"
+        id="btnPrev"
+        type="button"
+        aria-label="Previous slide"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+
+      <button
+        class="deck-arrow deck-arrow--next glass"
+        id="btnNext"
+        type="button"
+        aria-label="Next slide"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="22"
+          height="22"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
+
+      <!-- dots / slide progress (populated from visible slides) -->
+      <nav class="deck-dots glass" id="deckDots" aria-label="Slide navigation"></nav>
+
+      <!-- autoplay / loop toggles (bottom-right, glass) -->
+      <div class="deck-toggles glass" role="group" aria-label="Playback controls">
+        <button
+          class="toggle on"
+          id="toggleAutoplay"
+          type="button"
+          role="switch"
+          aria-checked="true"
+          aria-label="Autoplay"
+        >
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Autoplay</span>
+        </button>
+
+        <button
+          class="toggle on"
+          id="toggleLoop"
+          type="button"
+          role="switch"
+          aria-checked="true"
+          aria-label="Loop"
+        >
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Loop</span>
+        </button>
+      </div>
+
+      <!-- slide counter -->
+      <div class="deck-footer" id="deckFooter"></div>
+    </main>
+
+    <noscript>
+      <p style="position: fixed; inset: 0; display: grid; place-items: center; color: #fff; background: #0b0b0f; font-family: sans-serif;">
+        This presentation requires JavaScript. Please enable it and reload.
+      </p>
+    </noscript>
+
+    <!-- config first (data), then the engine -->
+    <script src="js/slides.config.js" defer></script>
+    <script src="js/deck.js" defer></script>
+  </body>
+</html>
