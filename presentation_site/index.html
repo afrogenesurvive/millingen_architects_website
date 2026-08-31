@@ -65,7 +65,7 @@
 
       <!-- Combined controls panel -->
       <div class="deck-controls" id="deckControls">
-        <button class="deck-controls-toggle glass" id="toggleControls" type="button" aria-label="Toggle controls">
+        <button class="deck-controls-toggle glass" id="toggleControls" type="button" aria-label="Toggle controls" title="Toggle controls">
           <svg
             viewBox="0 0 24 24"
             width="18"
@@ -85,18 +85,45 @@
 
           <!-- autoplay / loop toggles -->
           <div class="deck-toggles" role="group" aria-label="Playback controls">
-            <button class="toggle on" id="toggleAutoplay" type="button" role="switch" aria-checked="true" aria-label="Autoplay">
+            <button class="toggle on" id="toggleAutoplay" type="button" role="switch" aria-checked="true" aria-label="Autoplay" title="Autoplay">
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Autoplay</span>
+              <span class="toggle-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </span>
             </button>
 
-            <button class="toggle on" id="toggleLoop" type="button" role="switch" aria-checked="true" aria-label="Loop">
+            <button class="toggle on" id="toggleLoop" type="button" role="switch" aria-checked="true" aria-label="Loop" title="Loop">
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-label">Loop</span>
+              <span class="toggle-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round">
+                  <path d="M17 2l4 4-4 4" />
+                  <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+                  <path d="M7 22l-4-4 4-4" />
+                  <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+                </svg>
+              </span>
             </button>
 
             <!-- See more button -->
-            <button class="toggle-seemore hidden" id="toggleSeemore" type="button" aria-label="See more">
+            <button class="toggle-seemore hidden" id="toggleSeemore" type="button" aria-label="See more" title="See more">
               <span class="seemore-track">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

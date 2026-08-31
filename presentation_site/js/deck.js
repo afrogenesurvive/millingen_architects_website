@@ -170,7 +170,7 @@
         iframe.setAttribute("referrerpolicy", "no-referrer-when-downgrade");
 
         // Only set src when actually opening the iframe
-        iframe.src = "";
+        // iframe.src = "";
         wrap.appendChild(iframe);
         el.appendChild(wrap);
 
@@ -510,6 +510,12 @@
     });
 
     els.viewport.addEventListener("click", (e) => {
+      const openBtn = e.target.closest("[data-open-iframe]");
+      if (openBtn && !state.iframeOpen) {
+        openIframe(openBtn.dataset.openIframe);
+        return;
+      }
+
       const closeBtn = e.target.closest("[data-close-iframe]");
       if (closeBtn) {
         closeIframe();
