@@ -12,16 +12,16 @@
 window.DECK_CONFIG = {
   /* ---------------------------------------------------------------- meta - */
   meta: {
-    title: "Millingen Architects",            // shown top-left + <title>
-    tagline: "Designing spaces that shape how we live.", // optional
-    accent: "#c9a86a",                        // optional brand accent (gold)
+    // title: "Millingen Architects", // shown top-left + <title>
+    // tagline: "Designing spaces that shape how we live.", // optional
+    accent: "#c9a86a", // optional brand accent (gold)
   },
 
   /* ------------------------------------------------------------ timing --- */
-  autoplayDelay: 5000,   // ms shown on each slide before auto-advancing
+  autoplayDelay: 5000, // ms shown on each slide before auto-advancing
   autoplayDefault: true, // autoplay switch ON by default
-  loopDefault: true,     // loop switch ON by default
-  kenBurns: true,        // subtle zoom/pan on image slides
+  loopDefault: true, // loop switch ON by default
+  kenBurns: true, // subtle zoom/pan on image slides
 
   /* -------------------------------------------------------------- slides - */
   /* Types:
@@ -44,11 +44,10 @@ window.DECK_CONFIG = {
     {
       id: "hero",
       type: "image",
-      title: "Millingen Architects",
-      caption:
-        "Contemporary architecture rooted in craft, light and landscape. (TODO: replace this placeholder image + text with your pitch content.)",
+      //   title: "Millingen Architects Website",
+      //   caption: "Mood-Board Presentation",
       image: {
-        src: "assets/img/hero.svg",
+        src: "assets/img/hero02.png",
         alt: "Placeholder hero — replace with your image",
       },
       // Uncomment + set target to add a "See more" CTA to this slide:
@@ -58,45 +57,88 @@ window.DECK_CONFIG = {
     /* ------------------------------------------------------------------ */
     /* 2 · VIDEO — YouTube (muted autoplay). Replace videoId with yours.   */
     /* ------------------------------------------------------------------ */
+    // {
+    //   id: "showreel",
+    //   type: "video",
+    //   title: "Our work in motion",
+    //   caption: "A short showreel. (TODO: replace videoId with your YouTube video.)",
+    //   provider: "youtube",
+    //   videoId: "aqz-KE-bpKQ", // Big Buck Bunny (Blender, CC-BY) — demo placeholder
+    //   seeMore: { label: "See more", target: "site-showreel" },
+    // },
+
+    // Video from Google Drive/Local
+
     {
-      id: "showreel",
+      id: "showreel_001",
       type: "video",
-      title: "Our work in motion",
-      caption: "A short showreel. (TODO: replace videoId with your YouTube video.)",
-      provider: "youtube",
-      videoId: "aqz-KE-bpKQ", // Big Buck Bunny (Blender, CC-BY) — demo placeholder
-      seeMore: { label: "See more", target: "site-showreel" },
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      //   src: "https://drive.google.com/file/d/1SJAE_SFCfPM1r2RxGpiNGo0N6sEI0A05/view?usp=sharing",
+      //   src: "https://drive.google.com/uc?export=download&id=1SJAE_SFCfPM1r2RxGpiNGo0N6sEI0A05",
+      src: "assets/vid/001.mp4",
+      seeMore: { label: "See more", target: "site-001" },
     },
 
-    /* ------------------------------------------------------------------ */
-    /* 3 · IMAGE — project 01 (placeholder)                                */
-    /* ------------------------------------------------------------------ */
     {
-      id: "project-01",
-      type: "image",
-      title: "Hillside Residence",
-      caption:
-        "A material study in timber and stone, set into the terrain. (TODO: replace placeholder with real project photography.)",
-      image: {
-        src: "assets/img/project-01.svg",
-        alt: "Placeholder project image — replace with your image",
-      },
-      seeMore: { label: "See more", target: "site-project-01" },
+      id: "showreel_002",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/002.mp4",
+      seeMore: { label: "See more", target: "site-002" },
     },
 
-    /* ------------------------------------------------------------------ */
-    /* 4 · IMAGE — project 02 (placeholder)                                */
-    /* ------------------------------------------------------------------ */
     {
-      id: "project-02",
-      type: "image",
-      title: "Riverside Pavilion",
-      caption:
-        "Lightweight pavilion framing water and sky. (TODO: replace placeholder with real project photography.)",
-      image: {
-        src: "assets/img/project-02.svg",
-        alt: "Placeholder project image — replace with your image",
-      },
+      id: "showreel_003",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/003.mp4",
+      seeMore: { label: "See more", target: "site-003" },
+    },
+
+    {
+      id: "showreel_004",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/004.mp4",
+      seeMore: { label: "See more", target: "site-004" },
+    },
+
+    {
+      id: "showreel_005",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/005.mp4",
+      seeMore: { label: "See more", target: "site-005" },
+    },
+
+    {
+      id: "showreel_006",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/006.mp4",
+      seeMore: { label: "See more", target: "site-006" },
+    },
+
+    {
+      id: "showreel_007",
+      type: "video",
+      //   title: "Our work in motion",
+      //   caption: "A short showreel.",
+      provider: "mp4",
+      src: "assets/vid/007.mp4",
+      seeMore: { label: "See more", target: "site-007" },
     },
 
     /* ---------------------------------------------------------------- */
@@ -111,24 +153,52 @@ window.DECK_CONFIG = {
     /* ---------------------------------------------------------------- */
 
     {
-      id: "site-portfolio",
+      id: "site-001",
       type: "iframe",
-      url: "https://example.com", // TODO: replace with your portfolio site
-      title: "Our portfolio",
+      url: "https://www.governorsmansion.org/", // TODO: replace with the project case-study page
+      title: "001",
     },
 
     {
-      id: "site-showreel",
+      id: "site-002",
       type: "iframe",
-      url: "https://example.com", // TODO: replace with your site for this slide
-      title: "Showreel credits",
+      url: "https://www.mosbyfiles.com/cases/frank-gehry", // TODO: replace with the project case-study page
+      title: "002",
     },
 
     {
-      id: "site-project-01",
+      id: "site-003",
       type: "iframe",
-      url: "https://example.com", // TODO: replace with the project case-study page
-      title: "Hillside Residence — case study",
+      url: "https://www.thecube.dk/", // TODO: replace with the project case-study page
+      title: "003",
+    },
+
+    {
+      id: "site-004",
+      type: "iframe",
+      url: "https://www.group8.ch/en", // TODO: replace with the project case-study page
+      title: "004",
+    },
+
+    {
+      id: "site-005",
+      type: "iframe",
+      url: "https://illoca.unseen.co/", // TODO: replace with the project case-study page
+      title: "005",
+    },
+
+    {
+      id: "site-006",
+      type: "iframe",
+      url: "https://www.grounded2026.com/", // TODO: replace with the project case-study page
+      title: "006",
+    },
+
+    {
+      id: "site-007",
+      type: "iframe",
+      url: "https://www.bloom3d.studio/", // TODO: replace with the project case-study page
+      title: "007",
     },
   ],
 };
