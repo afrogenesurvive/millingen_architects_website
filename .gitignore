@@ -3,3 +3,6 @@
 
 # Notes / internal docs
 notes/
+
+# ── Dev monitor config (local-only, per-machine) ──
+devmon.json
