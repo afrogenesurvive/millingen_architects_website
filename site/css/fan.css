@@ -1,0 +1,320 @@
+/* ============================================================================
+ * fan.css — the portfolio nav: a VERTICAL flip column.
+ *
+ * Items sit in a single column and are "flipped through" about the HORIZONTAL
+ * axis (`rotateX`), each rotating about its own top or bottom edge so neighbours
+ * tip AWAY from the active card. The active card stands upright and the column
+ * forms a tent / rolodex shape receding into perspective.
+ *
+ * This is the axis the group8.ch reference uses: its `.NextProject_picture` drives
+ * `rotateX(calc(var(--progress) * 50deg - 90deg))` with
+ * `transform-origin: center bottom`. Nothing in that stylesheet rotates about Y.
+ *
+ * It is a real vertical scroll container, which buys two things hand-rolled
+ * gesture code cannot: native momentum (especially on touch) and automatic
+ * clamping, so the first and last card can both be centred without clipping.
+ *
+ * Geometry contract with fan.js:
+ *   --i         signed relative index (index - active). Active is 0.
+ *   --a         Math.abs(--i)
+ *   data-side   "above" | "below" — set by JS; picks the transform-origin edge
+ *   data-mode   "snap" | "scroll" — set on .fan
+ *
+ * Layout maths: each item is --card-h tall with a block margin of
+ * (--step - --card-h), so the column advances exactly --step per card and the
+ * scrollable span is (n-1) * --step.
+ * ========================================================================== */
+
+.page--home {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding-block-end: 0;
+}
+
+.page--home .page__head { margin-bottom: 1.25rem; }
+
+/* ------------------------------------------------- mode toggle (Step/Scroll) */
+
+.modes {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.modes__label {
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.modes__group {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.modes__btn {
+  min-height: 32px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.modes__btn[aria-pressed="true"] {
+  background: var(--accent);
+  color: #101014;
+}
+
+/* ------------------------------------------------------------------- fan --- */
+
+.fan {
+  /* -------- the only knobs you need to tune the flip -------- */
+  --card-w: min(92vw, 44rem); /* card width */
+  --card-h: clamp(190px, 27vh, 272px); /* card height — the column's unit */
+  --step: clamp(60px, 9.5vh, 94px); /* vertical advance (< --card-h = overlap) */
+  --tilt: 11deg; /* rotation per step, about the card's NEAR edge */
+  --recede: 70px; /* how far each step is pushed back in Z */
+  --shrink: 0.02; /* how much far cards shrink */
+
+  /* The aperture the column is seen through. This is also the perspective origin,
+   * so it must be a length we control — NOT a percentage, because percentage
+   * padding-block resolves against the containing block's inline size (width),
+   * which would silently centre on the wrong axis. */
+  --view-h: min(70vh, 620px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  height: var(--view-h);
+  perspective: 1500px;
+  perspective-origin: 50% 50%;
+
+  /* real scroll container: native momentum on touch, clamped at both ends */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  /* Deliberately NO `scroll-behavior: smooth`. Smooth scrolling is not
+   * implemented in every Chromium build (measured 2026-09-23 in the VS Code
+   * embedded browser: both scrollTo({behavior:"smooth"}) and scroll-behavior:
+   * smooth silently swallowed the scroll and left the active card stranded
+   * off-centre). Programmatic moves are tweened with requestAnimationFrame in
+   * fan.js instead — see glide(). Native touch/trackpad momentum is unaffected. */
+
+  /* a swipe at either end must not trigger iOS overscroll / back-navigation */
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+
+  /* half an aperture minus half a card, so card 0 and card n-1 can also centre */
+  padding-block: calc(var(--view-h) / 2 - var(--card-h) / 2);
+
+  margin: 0;
+  list-style: none;
+}
+
+.fan::-webkit-scrollbar { display: none; }
+
+/* Step mode — one folder at a time. Mandatory snapping plus the browser's native
+ * fling is what gives touch devices momentum that lands exactly on the next card. */
+.fan[data-mode="snap"] { scroll-snap-type: y mandatory; }
+.fan[data-mode="snap"] .fan__item { scroll-snap-align: center; }
+
+/* Scroll mode — free scrolling; rotation is driven continuously by position. */
+.fan[data-mode="scroll"] { scroll-snap-type: none; }
+
+.fan__item {
+  --i: 0; /* signed relative index — set by JS */
+  --a: 0; /* Math.abs(--i) — set by JS */
+
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--card-h);
+  width: var(--card-w);
+  max-width: 100%;
+
+  /* a NEGATIVE step: this overlap is the stack of folders */
+  margin-block-start: calc(var(--step) - var(--card-h));
+
+  /* The apex model. Each card rotates about the edge NEAREST the active card, so
+   * both directions tip away from it and the column reads as a tent. Rotating
+   * every card about the same edge instead makes the card ABOVE lean out over the
+   * active one and occlude it. */
+  transform-origin: center bottom;
+  --rot: calc(var(--a) * var(--tilt));
+}
+
+/* the card above pivots on its TOP edge instead, and leans the other way */
+.fan__item[data-side="above"] {
+  transform-origin: center top;
+  --rot: calc(var(--a) * var(--tilt) * -1);
+}
+
+/* The 3D flip lives on this inner wrapper, NOT on the <li>. The <li> is the scroll
+ * snap target, and a transform on it displaces its computed snap position — with
+ * the transform on the <li>, every snap point landed 22px off centre and the
+ * column looked stuck (measured 2026-09-23: it always snapped back to 96 instead
+ * of 74). Keeping the snap box untransformed keeps the scroll geometry honest. */
+.fan__flip {
+  flex: 1 1 auto;
+  min-height: 0;
+  transform-origin: inherit;
+  transform: rotateX(var(--rot))
+    translateZ(calc(var(--a) * var(--recede) * -1))
+    scale(calc(1 - var(--a) * var(--shrink)));
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+/* the first card must not be pushed out by the overlap margin */
+.fan__item:first-child { margin-block-start: 0; }
+
+/* z-order: the active card on top, neighbours behind it. */
+.fan__item[data-depth="0"] { z-index: 20; }
+.fan__item[data-depth="1"] { z-index: 19; }
+.fan__item[data-depth="2"] { z-index: 18; }
+.fan__item[data-depth="3"] { z-index: 17; }
+.fan__item[data-depth="4"] { z-index: 16; }
+
+/* Bring the hovered or focused folder to the FRONT. Without this its lift stays
+ * partly buried behind its neighbours, which reads as a broken hover. */
+.fan__item:has(.fan__card:hover),
+.fan__item:focus-within { z-index: 30; }
+
+/* ------------------------------------------------------------------ card --- */
+
+.fan__card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%; /* the item is --card-h tall; the card fills it so heights match */
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  transition:
+    box-shadow var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+/* No translate lift here: a transform on the card would fight the item's rotateX
+ * and the two would fight over the same 3D space. Emphasis comes from the
+ * border, the shadow, and the item's z-index. */
+.fan__card:hover,
+.fan__card:focus-visible {
+  border-color: rgba(201, 168, 106, 0.5);
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.62);
+}
+
+.fan__tab {
+  display: block;
+  width: 44%;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 6px 6px 0 0;
+  opacity: 0.85;
+}
+
+.fan__thumb {
+  display: block;
+  position: relative; /* containing block for the absolutely-filled image */
+  flex: 1 1 0;
+  min-height: 0; /* lets the image shrink inside the fixed-height card */
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+/* The image is positioned absolutely on purpose. In normal flow with
+ * `height: 100%` it has no definite height to resolve against (the thumb is a
+ * flex item with no set height), so it falls back to its intrinsic 3:2 ratio and
+ * forces the card to ~425px — which silently overrode the item's flex-basis and
+ * made the column's real step 4x the intended value. Taking it out of flow
+ * removes it from the intrinsic-size calculation entirely. */
+.fan__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fan__meta {
+  display: block;
+  padding: 0.8rem 0.95rem 0.95rem;
+}
+
+.fan__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fan__name { display: block; font-size: 0.95rem; }
+
+.fan__num {
+  font-size: 0.72rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+}
+
+.fan__sub {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.2rem;
+}
+
+/* pointer-only emphasis: a touch device must not inherit a stuck :hover */
+@media (hover: none) {
+  .fan__card:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* phones — the column is the same, just less skew and shorter cards so more of
+ * the stack is visible at once */
+@media (max-width: 560px) {
+  .fan {
+    --tilt: 8deg;
+    --recede: 40px;
+    --shrink: 0.015;
+    --card-h: clamp(158px, 24vh, 220px);
+    --step: clamp(52px, 8.5vh, 78px);
+    --view-h: min(64vh, 520px);
+  }
+}
+
+/* landscape phone — very little vertical room, so shorten the aperture */
+@media (max-height: 520px) and (orientation: landscape) {
+  .fan {
+    --view-h: min(78vh, 380px);
+    --card-h: clamp(150px, 30vh, 200px);
+    --step: clamp(46px, 11vh, 68px);
+  }
+  .page--home .page__head { margin-bottom: 0.4rem; }
+  .page--home .page__lede { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fan { scroll-behavior: auto; }
+  .fan__flip, .fan__card { transition-duration: 1ms; }
+}

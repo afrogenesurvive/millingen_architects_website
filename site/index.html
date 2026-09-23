@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover is REQUIRED for env(safe-area-inset-*) to be non-zero -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Millingen Architects — selected works, practice and contact." />
+    <meta name="theme-color" content="#0b0b0f" />
+    <title>Millingen Architects</title>
+
+    <!-- Root-absolute on purpose: a deep link like /project/001 would otherwise
+         resolve these against /project/ and 404 with a MIME-type error. -->
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/layout.css" />
+    <link rel="stylesheet" href="/css/fan.css" />
+    <link rel="stylesheet" href="/css/popover.css" />
+    <link rel="stylesheet" href="/css/project.css" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#view">Skip to content</a>
+
+    <header class="sitebar">
+      <a class="sitebar__brand" href="/">Millingen Architects</a>
+
+      <button
+        class="sitebar__menu-btn glass"
+        id="menuBtn"
+        type="button"
+        aria-expanded="false"
+        aria-controls="menuPanel"
+        aria-label="Open menu">
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          aria-hidden="true">
+          <path d="M3 7h18M3 12h18M3 17h18" />
+        </svg>
+      </button>
+    </header>
+
+    <!-- Sibling of <header> on purpose — see popover.css -->
+    <nav class="popover glass" id="menuPanel" aria-label="Main" data-open="false"></nav>
+
+    <!-- the router mounts one view in here -->
+    <main id="view" tabindex="-1"></main>
+
+    <noscript>
+      <p style="padding: 2rem; color: #fff; background: #0b0b0f">
+        This site needs JavaScript. Please enable it and reload.
+      </p>
+    </noscript>
+
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>

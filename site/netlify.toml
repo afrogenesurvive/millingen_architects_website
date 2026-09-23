@@ -1,0 +1,29 @@
+# Netlify configuration — SITE #2 (the portfolio site).
+#
+# This repo hosts TWO independent Netlify sites:
+#
+#   SITE #1  the presentation deck   →  publish = "presentation_site"
+#            configured by the netlify.toml at the REPO ROOT
+#
+#   SITE #2  this portfolio site     →  publish = "." (i.e. the site/ folder)
+#            configured by THIS file
+#
+# In the Netlify UI for site #2, set:
+#   Base directory    : site
+#   Build command     : (leave empty / the command below)
+#   Publish directory : .            ← relative to the base directory
+#
+# Netlify reads the netlify.toml found at the site's BASE directory, which is
+# why these two files can coexist without one overriding the other.
+
+[build]
+  publish = "."
+  command = "echo 'Static site — no build step required.'"
+
+# SPA fallback: deep links like /project/001 and page refreshes are served
+# index.html, and the client router takes over. Without this, /project/001
+# returns a Netlify 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

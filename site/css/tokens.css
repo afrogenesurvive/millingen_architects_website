@@ -1,0 +1,44 @@
+/* ============================================================================
+ * tokens.css — brand tokens.
+ *
+ * Mirrors presentation_site/css/styles.css so the site reads as the same
+ * family as the deck. Only the :root block and the .glass utility are copied;
+ * the deck's layout rules (body overflow:hidden, fixed 100vh) are deliberately
+ * NOT reused — the deck is a fixed 100vh carousel with `body { overflow: hidden }`;
+ * this site is a scrolling document.
+ * ========================================================================== */
+
+:root {
+  /* --- inherited from the deck --- */
+  --accent: #c9a86a;
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.12);
+  --text: #f5f5f4;
+  --text-dim: rgba(255, 255, 255, 0.62);
+  --bg: #0b0b0f;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* --- new for the site --- */
+  --page-gutter: clamp(1rem, 5vw, 4rem);
+  --measure: 68ch;
+  --radius: 14px;
+  --radius-lg: 22px;
+  --tap-min: 44px;
+  --bar-h: 64px;
+
+  --dur-fast: 180ms;
+  --dur: 320ms;
+  --dur-slow: 520ms;
+
+  --surface: #16161c;
+  --surface-2: #0e0e13;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+  }
+}

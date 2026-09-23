@@ -1,19 +1,32 @@
 # millingen_architects_website
 
-A static, fullscreen **cinematic presentation deck** for Millingen Architects,
-built with zero-build vanilla HTML/CSS/JS and deployable to Netlify in a few
-clicks.
-
-The deck renders entirely from a single config file, so the same engine can be
-reused for any presentation/pitch — just edit the config and swap the media.
+Two independent static sites for Millingen Architects, both zero-build vanilla HTML/CSS/JS and
+deployable to Netlify with no build step.
 
 ## Contents
 
-- [`presentation_site/`](presentation_site/) — the website itself
-- `netlify.toml` — Netlify config (publishes `presentation_site/`, no build step)
-- `notes/` — project research (unrelated to this site)
+- [`presentation_site/`](presentation_site/) — **the cinematic presentation deck.** Fullscreen
+  auto-playing slideshow; renders entirely from one config file (`js/slides.config.js`), so the
+  same engine can be reused for any pitch.
+- [`site/`](site/) — **the portfolio site.** Vertical flip-column nav, project pages with
+  galleries and a lightbox, an About page, and a menu popover. See
+  [`site/README.md`](site/README.md).
+- `netlify.toml` — Netlify config for the deck (publishes `presentation_site/`)
+
+Each site gets its own Netlify configuration, distinguished by **base directory**: the deck is
+served from the repo root, the portfolio from `site/` (see `site/netlify.toml`).
 
 ## Features
+
+### Portfolio site (`site/`)
+
+- Vertical flip-column portfolio nav with a Step / Scroll mode switch — see
+  [`site/README.md`](site/README.md)
+- Deep-linkable project pages (`/project/<id>`): hero, facts list, prose, gallery, lightbox
+- About page (practice, services, policies, founder CV, contact) driven by one content file
+- Top-right menu popover, present on every page
+
+### Presentation deck (`presentation_site/`)
 
 - Fullscreen cinematic slides with crossfade + subtle Ken Burns on images
 - **Autoplay** (5s per slide) and **Loop**, both on by default and toggleable

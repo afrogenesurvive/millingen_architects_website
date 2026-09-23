@@ -1,0 +1,199 @@
+/* ============================================================================
+ * project.css — project page: hero, facts, prose, gallery, pager, lightbox.
+ * Also owns the shared .prose / .pull / .facts blocks, which the About page
+ * reuses.
+ * ========================================================================== */
+
+/* ------------------------------------------------------------------- hero -- */
+
+.project__hero {
+  position: relative;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+
+.project__hero img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+}
+
+.project__head { margin-top: 1.5rem; max-width: 46rem; }
+
+.project__title {
+  font-size: clamp(1.9rem, 5.5vw, 3.4rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
+}
+
+.project__sub {
+  color: var(--text-dim);
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  margin-bottom: 0.9rem;
+}
+
+/* ------------------------------------------------------- page section shell */
+
+.project__block { margin-bottom: clamp(2.25rem, 5vw, 3.5rem); }
+
+/* ------------------------------------------------------------------- facts -- */
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem 1.75rem;
+  margin: 0;
+  max-width: 46rem;
+}
+
+.facts__k {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  align-self: center;
+}
+
+.facts__v { margin: 0; }
+
+@media (max-width: 560px) {
+  .facts { grid-template-columns: 1fr; gap: 0.15rem; }
+  .facts__v { margin-bottom: 0.75rem; }
+}
+
+/* ------------------------------------------------------------------- prose -- */
+
+.prose { max-width: var(--measure); }
+
+.prose p {
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.75;
+}
+
+.pull {
+  margin: 2rem 0;
+  padding-left: 1.25rem;
+  border-left: 3px solid var(--accent);
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* ----------------------------------------------------------------- gallery -- */
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 0.75rem;
+}
+
+.gallery__item {
+  padding: 0;
+  border: 0;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 3 / 2;
+  cursor: zoom-in;
+  display: block;
+  position: relative;
+}
+
+.gallery__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--dur) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .gallery__item:hover img { transform: scale(1.04); }
+}
+
+/* ------------------------------------------------------------------- pager -- */
+
+.pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding-top: clamp(1.5rem, 4vw, 2.5rem);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.pager__link {
+  display: grid;
+  gap: 0.15rem;
+  min-height: var(--tap-min);
+  padding: 1rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.pager__link:hover { border-color: rgba(201, 168, 106, 0.5); }
+
+.pager__link--next { text-align: right; }
+
+.pager__k {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.pager__v { font-size: 0.95rem; }
+
+@media (max-width: 560px) {
+  .pager { grid-template-columns: 1fr; }
+  .pager__link--next { text-align: left; }
+}
+
+/* ---------------------------------------------------------------- lightbox -- */
+
+.lightbox {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: 96vw;
+  max-height: 92dvh;
+  overflow: visible;
+}
+
+.lightbox::backdrop {
+  background: rgba(0, 0, 0, 0.86);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.lightbox__img {
+  max-width: 96vw;
+  max-height: 88dvh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--radius);
+}
+
+.lightbox__close {
+  /* a 44px target, not a 20px "x" — and clear of the notch */
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  right: max(1rem, env(safe-area-inset-right));
+  width: var(--tap-min);
+  height: var(--tap-min);
+
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: rgba(20, 20, 24, 0.92);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}

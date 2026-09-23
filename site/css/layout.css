@@ -1,0 +1,236 @@
+/* ============================================================================
+ * layout.css — site bar, page shell, headings, footer, About blocks.
+ * ========================================================================== */
+
+/* --------------------------------------------------------------- site bar -- */
+
+.sitebar {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 40;
+  height: calc(var(--bar-h) + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+
+  padding-block-start: env(safe-area-inset-top);
+  padding-inline-start: max(var(--page-gutter), env(safe-area-inset-left));
+  padding-inline-end: max(var(--page-gutter), env(safe-area-inset-right));
+
+  /* A soft scrim so the fixed bar stays legible over hero imagery without
+   * needing a solid background. */
+  background: linear-gradient(to bottom, rgba(11, 11, 15, 0.9), rgba(11, 11, 15, 0));
+  pointer-events: none; /* re-enabled on the children, so the scrim isn't a click target */
+}
+
+.sitebar > * { pointer-events: auto; }
+
+.sitebar__brand {
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.sitebar__menu-btn {
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ pages -- */
+
+.page {
+  /* clears the fixed bar (plus the notch) */
+  padding-block-start: calc(var(--bar-h) + env(safe-area-inset-top) + 1.5rem);
+  padding-inline: var(--page-gutter);
+  padding-block-end: 4rem;
+}
+
+.page__head { max-width: 46rem; }
+
+.page__title {
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4rem;
+}
+
+.page__lede {
+  color: var(--text-dim);
+  font-size: clamp(0.95rem, 1.6vw, 1.1rem);
+  max-width: 40rem;
+  margin-bottom: 0;
+}
+
+.section__title {
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.section__title::before {
+  content: "";
+  display: inline-block;
+  width: 1.6rem;
+  height: 1px;
+  margin-right: 0.7rem;
+  vertical-align: 0.35em;
+  background: var(--accent);
+}
+
+.page__meta {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------- breadcrumbs -- */
+
+.crumbs { margin-bottom: 1.5rem; }
+
+.crumbs__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.crumbs__back:hover { color: var(--text); }
+
+/* ------------------------------------------------------------------ about -- */
+
+.about { display: grid; gap: clamp(2rem, 5vw, 3.5rem); }
+
+.about__section { max-width: 60rem; }
+
+.about__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 46rem;
+}
+
+.about__item {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  min-height: var(--tap-min);
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius);
+}
+
+.about__item-label { font-size: 0.95rem; }
+
+/* when the item itself is the link */
+a.about__item { text-decoration: none; color: var(--text); }
+
+.about__item-note {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.about__item--link { transition: border-color var(--dur-fast) var(--ease-out); }
+.about__item--link:hover { border-color: var(--accent); }
+
+.about__footnote {
+  margin-top: 0.9rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Founder CV */
+
+.cv {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.1rem, 3vw, 1.8rem);
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  max-width: 46rem;
+}
+
+.cv__name { font-size: 1.25rem; margin-bottom: 0.15rem; }
+.cv__role { color: var(--accent); font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; }
+
+.cv__lines {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+}
+
+.cv__lines dt {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  align-self: center;
+}
+
+.cv__lines dd { margin: 0; }
+
+@media (max-width: 560px) {
+  .cv__lines { grid-template-columns: 1fr; gap: 0.15rem; }
+  .cv__lines dd { margin-bottom: 0.6rem; }
+}
+
+/* Contact */
+
+.contact {
+  display: grid;
+  gap: 0.35rem;
+  padding: clamp(1.1rem, 3vw, 1.8rem);
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-lg);
+  max-width: 46rem;
+}
+
+.contact a { color: var(--accent); text-decoration: none; }
+.contact a:hover { text-decoration: underline; }
+
+.contact__address {
+  font-style: normal;
+  color: var(--text-dim);
+  display: grid;
+}
+
+.contact__note {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ----------------------------------------------------------------- footer -- */
+
+.pagefoot {
+  padding: 2rem var(--page-gutter) calc(2rem + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  justify-content: space-between;
+}
+
+.pagefoot a { color: var(--text-dim); text-decoration: none; }
+.pagefoot a:hover { color: var(--text); }
