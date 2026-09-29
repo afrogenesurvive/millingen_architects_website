@@ -116,8 +116,8 @@
    * that shortens the card eats into the seam. It holds because the tail band is
    * now only ~7% of the card, which absorbs any forward step. */
   --tilt-focus: 14deg; /* the focused card, wherever it is in the pile */
-  --tilt-step: 4deg; /* each card after it leans further FORWARD */
-  --tilt-max: 26deg; /* the forward cap */
+  --tilt-step: 10deg; /* each card after it leans further FORWARD */
+  --tilt-max: 45deg; /* the forward cap */
   /* ONLY class a's clamp floor, and inert at its current value. It used to be the
    * backward floor for the whole deck, and that is where the old "about 2.6deg is all
    * that fits" figure came from. Nothing in the deck leans backward any more. */
@@ -142,7 +142,7 @@
    *
    * The name still says "back", because this was a backward lean until it was reversed
    * — the sign is what matters, and it is positive now. */
-  --tilt-back: 35deg;
+  --tilt-back: 25deg;
 
   /* WHICH CARD THE RAMP IS MEASURED FROM. 0 at rest; fan.js writes it from the
    * pointer and from keyboard focus. */
