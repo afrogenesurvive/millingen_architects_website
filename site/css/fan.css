@@ -67,11 +67,13 @@
   --card-w: 100%; /* the stack spans the content column */
   --aspect: 7 / 5; /* the reference's picture ratio */
 
-  /* TWO-TIER BAND. The focused card is left mostly exposed — it is the one you are
-   * looking at — and every card AFTER it is pulled much further up, so the tail
-   * reads as a tight stack of thin bands rather than a second and third hero.
-   * 32% leaves the focused card ~55% of its height showing; 64% leaves the tail
-   * ~7%, a band of roughly 70-100px at desktop widths. */
+  /* TWO-TIER BAND. The card you are LOOKING AT is left mostly exposed and every
+   * OTHER card is pulled much further up, so the deck reads as one open card plus a
+   * tight stack of thin bands rather than a column of heroes.
+   * WHICH card that is comes from `--focus`, not from the card's place in the pile:
+   * focus a card mid-pile and the deck closes up above it. 32% leaves the focused
+   * card ~55% of its height showing; 64% leaves the rest ~7%, a band of roughly
+   * 70-100px at desktop widths. */
   --overlap: 32%;
   --overlap-tail: 64%;
 
@@ -101,24 +103,50 @@
    * perspective magnifies it, and the card projects far wider than its column —
    * measured, -20deg put a 3681px card into a 1152px column.
    *
-   * THE RAMP RISES FORWARD from the focused card: the card at the front of the
-   * pile leans forward, and every card AFTER it leans a little further forward,
-   * capped by --tilt-max. Nothing before the focused card is touched, because
-   * --pile is 0-based — so "cards above the focused card keep its tilt" is
-   * automatic.
+   * THE RAMP RISES FORWARD FROM THE FOCUSED CARD, wherever that card sits. The
+   * focused card and every card BEFORE it lean --tilt-focus; every card AFTER it
+   * leans a little further forward per step, capped by --tilt-max. So pointing at a
+   * card mid-pile re-ramps the whole deck around it — the cards above it come up to
+   * its angle and the cards below fan away from it. `--focus` below is which card
+   * that is, and max(0, --rel) in the formula on .fan__item is what holds the
+   * "before" side at the focus tilt instead of unwinding backwards.
    *
    * A rising ramp is safe HERE even though it used to collapse the pile: a forward
    * card is a SHORTER card, and visual overlap is projHeight - band, so a step
    * that shortens the card eats into the seam. It holds because the tail band is
    * now only ~7% of the card, which absorbs any forward step. */
-  --tilt-focus: 14deg; /* the card at the front of the pile */
+  --tilt-focus: 14deg; /* the focused card, wherever it is in the pile */
   --tilt-step: 4deg; /* each card after it leans further FORWARD */
   --tilt-max: 26deg; /* the forward cap */
-  /* Backward is available but has to stay tiny: about 2.6deg is the most that
-   * fits a 1280x900 column before the magnification above spills past the
-   * gutters. Give the focused card a LONGER --persp if it needs a real backward
-   * lean — a long projection is what makes backward affordable. */
+  /* ONLY class a's clamp floor, and inert at its current value. It used to be the
+   * backward floor for the whole deck, and that is where the old "about 2.6deg is all
+   * that fits" figure came from. Nothing in the deck leans backward any more. */
   --tilt-min: -2deg;
+
+  /* -------- class b, the near side (the focused card and the cards above it) --------
+   * A DEEP forward lean — a bigger angle than the tail's own ramp — softened by its own
+   * long `--persp-back`. Forward is the safe direction: the bottom edge recedes, so the
+   * card keeps its full width along the TOP and can only narrow downward. No gutter to
+   * overrun, no label to bury, which is why this angle can be large where a backward
+   * one could not.
+   *
+   * DEGREES ARE NOT COMPARABLE BETWEEN THE TWO CLASSES. At 35deg under `--persp-back`
+   * (2560px at 1280) this card projects 1150px at the top and 971px at the bottom, a
+   * 16% taper — while the tail at 26deg under the short `--persp` (410px) tapers
+   * 1149 -> 612, i.e. 47%. The large angle and the long projection pull in opposite
+   * directions; the projection wins, which is what keeps this reading as a gentle lean.
+   *
+   * Measured at 1280x900: projH 569px against an 823px layout box, and label clearance
+   * 129px on the exposed card — the best in the deck, because a forward lean lifts the
+   * type AWAY from the seam that covers it.
+   *
+   * The name still says "back", because this was a backward lean until it was reversed
+   * — the sign is what matters, and it is positive now. */
+  --tilt-back: 35deg;
+
+  /* WHICH CARD THE RAMP IS MEASURED FROM. 0 at rest; fan.js writes it from the
+   * pointer and from keyboard focus. */
+  --focus: 0;
 
   /* -------- projection: only meaningful while `--rake` is non-zero --------
    * `--persp` must stay SHORT. The visible trapezoid is roughly
@@ -126,6 +154,12 @@
    * rake invisible — which is why the reference uses 20vw where it does use one,
    * rather than the 1000px+ people reach for by reflex. */
   --persp: clamp(340px, 32vw, 880px);
+  /* Class b gets its OWN, much longer projection, and this is what turns a deep angle
+   * into a gentle one: at 35deg the short `--persp` above would taper the card 54%,
+   * where 200vw tapers it 16%. Because it is a multiple of vw, the taper stays the same
+   * FRACTION of the card at every width, so the near side looks the same from phone to
+   * desktop. */
+  --persp-back: 200vw;
   /* The vanishing point is the card's TOP EDGE, deliberately. It used to be
    * `50% 45%`, which put it BELOW the band the type occupies — so a receding card
    * pushed its own top-row type DOWNWARD, toward the seam, and the tighter the
@@ -150,9 +184,13 @@
 .fan__item {
   --pile: 0; /* this card's FIXED place in the pile — set by JS */
 
-  /* How much the NEXT card covers of this one. min(1, --pile) is the tier switch:
-   * 0 for the focused card at the front of the pile, 1 for every card after it. */
-  --overlap-here: calc(var(--overlap) + min(1, var(--pile)) * (var(--overlap-tail) - var(--overlap)));
+  /* How much the NEXT card covers of this one. The tier switch is a DISTANCE test
+   * against the focus — 0 on the focused card, 1 on every other card — so the
+   * exposed card is whichever one is focused, not the one at the front of the pile.
+   * `max(a - b, b - a)` is `abs(a - b)` without abs(), which is still not safe to
+   * lean on everywhere. */
+  --tier: min(1, max(var(--pile) - var(--focus, 0), var(--focus, 0) - var(--pile)));
+  --overlap-here: calc(var(--overlap) + var(--tier) * (var(--overlap-tail) - var(--overlap)));
 
   /* ...restated against the card HEIGHT, for the type anchor and the scrim. */
   --overlap-h: calc(var(--overlap-here) * 7 / 5);
@@ -163,11 +201,15 @@
    * seam, whether the card is the focused one or a thin band in the tail. */
   --label-lift: calc(var(--overlap-h) + clamp(0.7rem, 1.6vw, 1.1rem));
 
-  /* The ramp, scaled by --rake. clamp() so BOTH ends are held: --tilt-max caps how
-   * far forward the tail goes, and --tilt-min is the backward floor — which is a
-   * hard geometric limit, not a taste call (see the note on --tilt-min).
-   * Multiplying by --rake is what lets ONE value turn the rake on and off. */
-  --rake-deg: calc(var(--rake) * clamp(var(--tilt-min), calc(var(--tilt-focus) + var(--pile) * var(--tilt-step)), var(--tilt-max)));
+  /* Distance from the focused card: negative before it, 0 on it, positive after.
+   * The two tilt classes below are this same split, stated per card. */
+  --rel: calc(var(--pile) - var(--focus, 0));
+
+  /* The rake itself lives on the two classes below rather than here, because there
+   * are now two of them and a named class is easier to tune than a branch inside one
+   * calc(). This is the floor for a card carrying neither: flat, which is the
+   * reference's own look, rather than a deck stuck at some arbitrary angle. */
+  --rake-deg: 0deg;
 
   /* Each card carries its own projection rather than sharing one with the deck.
    * That is the reference's pattern — where it does use perspective it sits on the
@@ -195,6 +237,37 @@
    * while `--rake` is 0 (the two boxes then coincide), but keep it: it is
    * load-bearing again the moment the rake comes back. */
   pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * THE TWO TILTS. fan.js puts exactly one of these on every card whenever the focus
+ * changes, so a card's tilt and its band always agree — both use the same split,
+ * "after the focus" or "at and before it".
+ *
+ * a — the TAIL ramp, on every card AFTER the focused one: 18deg, 22, 26 … A forward
+ *     lean pushes the bottom edge AWAY, so the card keeps its full width at the TOP
+ *     and narrows downward (top wider than bottom) and gets
+ *     SHORTER: 823px projects to ~483px at 18deg. That shortening is what makes a
+ *     rising ramp safe — each step eats into the seam instead of growing the deck.
+ *     It runs on the deck's SHORT `--persp`, which is why so few degrees foreshorten
+ *     this hard.
+ *
+ * b — the NEAR side, on the focused card and every card BEFORE it. Same direction and
+ *     the same top-wider-than-bottom trapezoid, but one much larger angle under its
+ *     own long `--persp-back`, which flattens it back out. See the --tilt-back /
+ *     --persp-back notes above: between these two classes the angle and the taper move
+ *     in OPPOSITE directions, so do not read the degrees as "how tilted it looks".
+ *
+ * Nothing in the deck leans backward — every card narrows downward. The focused card
+ * and the cards above it face forward gently; the cards below fan away more steeply.
+ * ------------------------------------------------------------------------- */
+.fan__item--after {
+  --rake-deg: calc(var(--rake) * clamp(var(--tilt-min), calc(var(--tilt-focus) + var(--rel) * var(--tilt-step)), var(--tilt-max)));
+}
+
+.fan__item--before {
+  --rake-deg: calc(var(--rake) * var(--tilt-back));
+  --persp: var(--persp-back);
 }
 
 /* nothing pulls the last card up, so nothing overlaps it */

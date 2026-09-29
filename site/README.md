@@ -101,16 +101,24 @@ Cards overlap in a **single column** like a pile of prints. Each card is pulled 
 before it by a per-card overlap (a negative `margin-block-end`), and its height comes from the
 picture — `aspect-ratio: 7 / 5` on `.fan__card`, there is no `--card-h`.
 
-**The band is two-tier.** The focused card at the front of the pile is left mostly exposed — it is
-the one you are looking at — and every card _after_ it is pulled much further up, so the tail reads
-as a tight stack of thin bands rather than a second and third hero. Both tiers are set as a
-**percentage pair**, `--overlap` / `--overlap-tail`, and each card picks one:
+**The band is two-tier, and the tier follows the FOCUS.** The card you are looking at is left mostly
+exposed and every _other_ card is pulled much further up, so the deck reads as one open card plus a
+tight stack of thin bands rather than a column of heroes. Point at a card mid-pile and the deck
+closes up **above** it — which is the point: the exposed card is the one you chose, not the one that
+happens to be at the front. Both tiers are set as a **percentage pair**, `--overlap` /
+`--overlap-tail`, and each card picks one:
 
 ```css
---overlap-here: calc(var(--overlap) + min(1, var(--pile)) * (var(--overlap-tail) - var(--overlap)));
+--tier:         min(1, max(var(--pile) - var(--focus), var(--focus) - var(--pile)));
+--overlap-here: calc(var(--overlap) + var(--tier) * (var(--overlap-tail) - var(--overlap)));
 ```
 
-`min(1, --pile)` is the tier switch — 0 for the focused card, 1 for everything after it.
+`--tier` is 0 on the focused card and 1 on every other card. `max(a - b, b - a)` is `abs(a - b)`
+without `abs()`, which is still not safe to lean on everywhere.
+
+⚠️ **Because the tier follows the focus, the band is the one thing in this deck that MOVES LAYOUT —
+and layout moving moves hit regions.** That is why the focus is only ever set from real pointer
+**movement** (`pointermove`) or the keyboard; see the movement-gate note under Depth.
 
 ⚠️ **The percentages are load-bearing, not a style choice.** In `margin-block-end` a percentage
 resolves against the containing block's **inline** size, which here _is_ the card width — and the
@@ -149,25 +157,48 @@ the JS-set `--pile` all stay in place and go inert at 0, because `rotateX(0deg)`
 **Sign convention — settled by measurement, because this doc has had it backwards.** With
 `transform-origin: center top` and `rotateX(-1 × --rake-deg)`:
 
-| `--rake-deg` | projected width      | projected height | reads as                                               |
-| ------------ | -------------------- | ---------------- | ------------------------------------------------------ |
-| `0`          | 1152 (layout)        | 823 (layout)     | flat                                                   |
-| **`+20`**    | **1152 — unchanged** | **609**          | bottom recedes → top nearest = **leaning FORWARD**     |
-| `−20`        | **3681**             | 1658             | bottom swings at you → magnified, spills the column    |
+| `--rake-deg` | projected width      | projected height | reads as                                            |
+| ------------ | -------------------- | ---------------- | --------------------------------------------------- |
+| `0`          | 1152 (layout)        | 823 (layout)     | flat                                                |
+| **`+20`**    | **1152 — unchanged** | **609**          | bottom recedes → top nearest = **leaning FORWARD**  |
+| `−20`        | **3681**             | 1658             | bottom swings at you → magnified, spills the column |
 
 So **positive = leaning forward = the top of the card appears nearest**, and it is also the **safe**
 direction: the card holds its full projected width and only shrinks in height. Negative is the
-expensive one — perspective magnifies the approaching edge, so `−20°` put a 3681px card into a
-1152px column. **Backward is available but has to stay tiny: about 2.6° is the most that fits before
-it spills past the gutters.** A _longer_ `--persp` is what makes backward affordable, at the cost of
-a flatter trapezoid.
+expensive one — perspective magnifies the approaching edge, so a bare `−20°` put a 3681px card into a
+1152px column, and that is the direction that needs a long projection and a careful gutter budget.
+**Nothing in the deck leans backward.** Both tilt classes lean forward, so both sit on the safe side
+of that line, and `--persp-back` is doing a different job entirely — see below.
 
-**The ramp rises forward from the focused card.** The card at the front of the pile leans forward
-14°, and every card after it leans a little further forward (4° per card), capped at 26° — settling
-at `14, 18, 22, 26, 26, 26, 26`. Nothing _before_ the focused card is touched, because `--pile` is
-0-based and the focused card is pile 0 — so "the cards above the focused card keep its tilt" is
-automatic. (Making the _pointed-at_ card the focus would need a focus-relative ramp, which is the
-unstable thing described below.)
+**There are TWO tilts, BOTH forward, and which one a card gets is decided by the focus.** `fan.js`
+puts exactly one of two classes on every card, splitting the deck the same way the band does:
+
+| class               | cards                                       | its angle                    |
+| ------------------- | ------------------------------------------- | ---------------------------- |
+| `fan__item--after`  | every card _after_ the focus                | the ramp — 18°, 22°, 26° …   |
+| `fan__item--before` | the focused card _and_ every card before it | one deep `--tilt-back` — 35° |
+
+Every card therefore keeps its full width along its **top** edge and narrows downward. What differs is
+how hard it narrows, and there the two classes do something counter-intuitive:
+
+| class | angle | projection | taper (top → bottom, 1280×900) | projected height |
+| --- | --- | --- | --- | --- |
+| `--after` at 26°  | the smaller angle | short — `--persp`, 410px      | 1149 → 612 (**47%**) | 393px |
+| `--before` at 35° | the larger angle  | long — `--persp-back`, 200vw  | 1150 → 971 (**16%**) | 569px |
+
+**A bigger angle under a longer projection tapers LESS.** `--persp-back: 200vw` is what turns the 35°
+near side into the gentler of the two, so do not read the degrees as how tilted a card looks. Because
+that projection is a multiple of `vw`, the taper holds the same fraction of the card at every width,
+so the near side reads the same from phone to desktop.
+
+The ramp side is `--tilt-focus + --rel × --tilt-step` (with `--rel` = `--pile − --focus`), capped at
+`--tilt-max`, counted from the focus; where the stack is short the cap is 22° instead (see the media
+queries at the bottom of `fan.css`). The near side is the flat `--tilt-back`.
+
+So the deck reads as **the focused card and the cards above it leaning forward gently, with the cards
+below fanning away more steeply.** At rest the focus is the front card, so the deck settles at
+`35, 18, 22, 26, 26, 26, 26`; point at card 3 and it re-ramps to `35, 35, 35, 35, 18, 22, 26`; point
+at the last card and everything from the front down to it sits at `35`.
 
 A rising ramp is safe _here_ even though it used to collapse the pile: a forward card is a **shorter**
 card, and visual overlap is `projHeight − band`, so each forward step eats into the seam. It holds
@@ -187,10 +218,16 @@ Everything below still holds:
   1920, `−18` at 2560 — the type was buried on any large display. At `0%` the same sweep reads
   `+14, +23, +25, +29, +34`. It also matches `transform-origin: center top`: the card narrows as it
   recedes rather than pivoting about a point inside its own middle.
-- **The rake is keyed to `--pile` — the card's fixed place in the pile — never to the focus.**
-  Making it follow the pointer is unstable, because un-rakening a card re-geometries the deck while
-  the pointer is over it, so the card beneath the cursor keeps changing. Measured with a
-  focus-relative ramp: a **stationary pointer walked the focus from card 4 to card 6 unaided.**
+- **The focus is only ever set from real pointer MOVEMENT, and that gate is load-bearing.** An
+  earlier attempt followed the pointer with `pointerover` and had to be abandoned: a **stationary
+  pointer walked the focus from card 4 to card 6 unaided**, because a focus change re-geometries the
+  deck under the cursor and `pointerover` fires again when the element beneath the pointer changes.
+  Two things make that impossible now. `pointermove` cannot fire without movement, so a focus change
+  can never feed itself — and the band is LAYOUT, so re-tilting a card cannot move a hit region at
+  all. The band moving is the one thing here that DOES move hit regions, which is exactly why the
+  gate is not optional. Re-verified: `--focus` holds steady for over a second with the pointer parked
+  inside the focused card's wide band, and pointing at a different card then re-focuses in one step
+  and holds.
 - **The overlap has to stay well under the card height**, tiered or not: the band a covered card
   keeps is `card height − overlap`, and at zero the card is invisible and unclickable.
 
@@ -236,10 +273,17 @@ Hovering also fades in the reference's **"→" badge** (`.fan__go`) — a filled
 `0.33 → 1` over 600ms — turns the project name to the accent colour, and thickens the card's
 hairline. `category` is inset to leave the badge room, so it does not shift when the badge appears.
 
-**JS now owns exactly one thing: `active`.** It drives the live region and
+**JS owns `active` and `--focus`.** `active` drives the live region and
 `sessionStorage("nav:last")`, moves with `↑`/`↓`/`←`/`→`/`PageUp`/`PageDown`/`Home`/`End`, wraps at
-both ends, and is restored for the session. There is no longer any `fanIndex` and no `--i`: the fan
-never consults JS, so the pointer and the keyboard can no longer fight over it.
+both ends, and is restored for the session; `--focus` is the index the whole deck is built around —
+which card is exposed, and which of the two tilts each card gets (see "Depth" above). The _fan_ is
+still pure CSS: there is no `fanIndex` and no `--i`, and the `--fan-y` push never consults JS, so the
+pointer and the keyboard cannot fight over the gesture.
+
+Two knobs are set from the same `setFocus`, and they are deliberately different kinds of thing:
+`--focus` is **one value** the CSS computes from, and the tilt classes are **per card**, because a
+named class is easier to tune than a branch inside a single `calc()`. Because both come from one
+call they can never disagree.
 
 ### Tuning
 
@@ -254,17 +298,23 @@ never consults JS, so the pointer and the keyboard can no longer fight over it.
 --dur-fan            fan transition duration
 --ease-spring        the fan's overshoot curve
 --rake               0 = flat (the reference). 1 = the raked deck. A FACTOR, not an angle
---tilt-focus         the card at the front of the pile
---tilt-step          how much further forward each card after it leans
---tilt-max           the forward cap
---tilt-min           the backward floor — a hard geometric limit, not taste
---persp              projection depth, applied per card. SHORT on purpose — see above
+--tilt-focus         where the tail ramp starts, on the card after the focus
+--tilt-step          how much further forward each card after the focus leans
+--tilt-max           the ramp's cap
+--tilt-min           the ramp clamp's floor — inert at its current value
+--tilt-back          the near side's lean (focused card + every card above it). 35° FORWARD —
+                     the name is stale, it has not leaned back since that was reversed
+--focus              which card the deck is built around; JS-written
+--persp              projection depth for the TAIL ramp. SHORT on purpose — see above
+--persp-back         projection depth for the NEAR side. LONG on purpose — it is what softens
+                     that 35° down to a 16% taper
 --persp-origin       the vanishing point; keep it at the card's TOP EDGE
 ```
 
-All of them live at the top of `fan.css`. The only JS-set values are `--pile` (the card's fixed
-position in the pile, read only by the rake) and the `z-index` paint order; the fan's `--fan-y` is
-set by the sibling rules in `fan.css`.
+All of them live at the top of `fan.css`. The JS-set values are `--pile` (the card's fixed position
+in the pile), `--focus` (which card the deck is built around — set on `pointermove`, by the keyboard
+cursor, and handed back to the cursor on `pointerleave`), the two tilt classes derived from it, and
+the `z-index` paint order; the fan's `--fan-y` is set by the sibling rules in `fan.css`.
 
 Verified with `--rake: 1` and 7 cards — **no horizontal overflow at any size**:
 
@@ -283,11 +333,34 @@ negative at 1920 and 2560 before `--persp-origin` moved to the top edge — so r
 change to `--overlap`, `--label-lift`, `--aspect` or `--persp-origin`. A card shorter than its own
 overlap is the same failure in its worst form: the card vanishes and cannot be clicked.
 
-Two traps when re-verifying interactively. **The fan is a CSS transition, so it does not advance
+The table is the **resting** deck. Two separate things re-centre on the focus, so sweep **both ends**:
+
+- **The band**, which means the exposed card moves and the cards above the focus close up. At focus 3
+  on 1280×900 the exposed card is card 3 (455px band) and cards 0–2 and 4–6 are all 85–86px — the
+  cards _below_ the focus keep the positions they had at rest.
+- **The tilt**, which is the *safer* case for the type here. Both classes lean forward, and a forward
+  lean lifts a card's own content UP toward its top edge, away from the seam that covers it — so the
+  exposed near-side card reads 129px of clearance at 1280×900 against the tail's 23–28px, and the thin
+  near-side cards above it 30px. That is the opposite of what a backward lean would do, which is why
+  the deck does not use one.
+
+Measured with the near side applied at all seven viewports: **every card is top-wider than bottom**,
+the near taper holds at 15.4–16.3% (constant, because `--persp-back` is vw-based), minimum clearance
+is 13px at 320×568 rising to 34px at 2560×1440, and there is **no horizontal overflow at any width** —
+a forward lean cannot spill, because the card can only narrow.
+
+Four traps when re-verifying interactively. **The fan is a CSS transition, so it does not advance
 while the page is not visible** — a probe on a background tab reads the transform as the identity
 matrix even though `--fan-y` is correctly set on the tail; inject `* { transition: none !important }`.
-And **measure the card or the `.fan__flip`, never the `<li>`** — the fan is a transform on a child,
-so the `<li>`'s rect never moves and a hover check against it reports a false all-zeros.
+**Make sure the fan is not engaged before calling a reading "resting"** — any `:hover` or
+`:focus-visible` on a card pushes every card after it down by `--fan-spread` (117px at 900 tall),
+which inflates label clearance by exactly that much; load the page and leave the pointer off the
+deck, and do **not** "press Home" to force the resting focus, because focusing a card engages the
+fan. **Setting `--focus` by hand only moves the BAND** — the tilt lives in the two classes, and only
+`setFocus()` writes both, so a probe that pokes the CSS variable shows the deck re-tiered while every
+card keeps its old tilt. And **measure the card or the `.fan__flip`, never the `<li>`** — the fan is
+a transform on a child, so the `<li>`'s rect never moves and a hover check against it reports a false
+all-zeros.
 
 ### Three traps worth knowing before you touch this
 

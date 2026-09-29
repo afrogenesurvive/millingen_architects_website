@@ -22,9 +22,19 @@
  * and the whole gesture runs off a single CSS transition, so the spring easing is
  * applied by the compositor instead of being restarted by every pointerover.
  *
- * Geometry contract with fan.css — JS sets only these:
- *   --pile   the card's FIXED place in the pile. Drives the rake, and only while
- *            `--rake` is non-zero.
+ * The one piece of pointer state that IS still here is `--focus`, and it is a single
+ * index rather than a signed offset: it picks WHICH CARD the deck is built around.
+ * See the geometry contract below.
+ *
+ * Geometry contract with fan.css — JS sets these:
+ *   --pile   the card's FIXED place in the pile — its index, set once at build.
+ *   --focus  which card the deck is built around. Read by the BAND (the focused card
+ *            is the exposed one, every other card is drawn up tight) and by the TILT.
+ *            Set on pointermove, by the keyboard cursor, and handed back to the cursor
+ *            on pointerleave.
+ *   class    `fan__item--after` / `fan__item--before` on every card, derived from
+ *            --focus: the two tilts, forward on the cards after the focus and
+ *            backward on the focused card and every card before it.
  *   z-index  set once at build; LATER cards paint over EARLIER ones, which is what
  *            keeps the visible band of a covered card its TOP edge.
  * ========================================================================== */
@@ -111,11 +121,8 @@ export function mountHome(container) {
      * reading as a pile. */
     li.style.zIndex = String(i + 1);
 
-    /* The rake's input, and deliberately NOT focus-relative. --pile is this card's
-     * fixed place in the pile, so its rake never changes. Deriving the rake from the
-     * focus instead is unstable: un-rakening a card re-geometries the deck while the
-     * pointer is over it, and measured, a stationary pointer walked the focus from
-     * card 4 to card 6 unaided. Keep the rake positional. */
+    /* --pile is this card's fixed place in the pile — the CSS half of the ramp
+     * needs it alongside `--focus`, which is written further down. */
     li.style.setProperty("--pile", String(i));
 
     fan.append(li);
@@ -125,6 +132,28 @@ export function mountHome(container) {
   const status = el("div", { class: "sr-only", role: "status", "aria-live": "polite" });
 
   view.append(fan, status);
+
+  /* WHICH CARD THE DECK IS BUILT AROUND. Two things read it, and this is the only
+   * place either of them changes:
+   *   - the BAND, through `--focus` in fan.css: the focused card is the exposed one
+   *     and every other card is drawn up tight, so focusing mid-pile closes the
+   *     deck above the focused card;
+   *   - the TILT, through one of the two classes, because a named class is easier to
+   *     tune than a branch inside a single calc().
+   * The guard earns its keep: pointermove fires continuously, and rewriting seven
+   * class lists per event would be wasteful. */
+  let focus = -1; /* -1, so the first call always applies */
+
+  const setFocus = (i) => {
+    if (i === focus) return;
+    focus = i;
+
+    fan.style.setProperty("--focus", String(i));
+    items.forEach((li, n) => {
+      li.classList.toggle("fan__item--after", n > i);
+      li.classList.toggle("fan__item--before", n <= i);
+    });
+  };
 
   /* --------------------------------------------------------------- status -- */
 
@@ -147,6 +176,9 @@ export function mountHome(container) {
     const moved = next !== active;
 
     active = next;
+    /* The keyboard cursor IS a focused card, so moving it re-ramps the deck exactly
+     * as pointing at one does. */
+    setFocus(active);
 
     if (moved) {
       remember();
@@ -181,10 +213,39 @@ export function mountHome(container) {
     setActive(active + (forward ? 1 : -1), { focus: true });
   });
 
+  /* --------------------------------------------------------------- focus --- */
+
+  /* POINTERMOVE, deliberately not pointerover. `pointerover` also fires when the
+   * deck re-geometries UNDER a stationary pointer, so a focus change can feed itself
+   * — that is how an earlier build let a resting pointer walk the focus from card 4
+   * to card 6. `pointermove` cannot fire without real movement, so the loop is closed
+   * by construction: park the pointer and the deck stays put however the layout
+   * shifts beneath it. */
+  fan.addEventListener("pointermove", (e) => {
+    const item = e.target.closest?.(".fan__item");
+    if (item) setFocus(items.indexOf(item));
+  });
+
+  /* Tabbing re-ramps the same way pointing does. */
+  fan.addEventListener("focusin", (e) => {
+    const item = e.target.closest?.(".fan__item");
+    if (item) setFocus(items.indexOf(item));
+  });
+
+  /* Pointer away: hand the deck back to the keyboard cursor. Not a hardcoded 0 —
+   * `active` is restored from the last session, so 0 would leave the deck built
+   * around a different card than the one the live region is announcing. */
+  fan.addEventListener("pointerleave", () => setFocus(active));
+
   /* --------------------------------------------------------------- boot ---- */
 
+  /* Build the deck around the card the keyboard cursor is already on, so the first
+   * paint and the live region agree, and a pointer that then leaves the deck is a
+   * no-op rather than a rearrangement. A mouse-only visitor never writes `nav:last`,
+   * so for them this is card 0 and the deck opens on the front card. */
   container.append(view);
 
+  setFocus(active);
   announce();
 
   /* Listeners live on `fan`, inside `view`, so the router discards them with the
