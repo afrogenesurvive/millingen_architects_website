@@ -1,6 +1,6 @@
 # Millingen Architects — portfolio site
 
-A zero-build static site: **vertical flip-column portfolio nav → project pages**, plus an
+A zero-build static site: **flat stacked-deck portfolio nav → project pages**, plus an
 **About** page and a **top-right menu popover**. No `package.json`, no bundler, no framework —
 plain HTML/CSS/ES modules, deployable to Netlify as-is.
 
@@ -18,13 +18,13 @@ site/
 │   ├── tokens.css             # brand tokens, mirrored from the deck
 │   ├── base.css               # reset, focus states, utilities
 │   ├── layout.css             # site bar, page shell, About blocks, footer
-│   ├── fan.css                # ⭐ the nav column (vertical flip)
+│   ├── fan.css                # ⭐ the nav deck (stacked pile, in perspective)
 │   ├── popover.css            # the menu panel
 │   └── project.css            # project page, facts, gallery, lightbox
 ├── js/
 │   ├── util.js                # el(), asset(), prose helpers, footer
 │   ├── router.js              # History-API router + link interception
-│   ├── fan.js                 # fan: render, geometry, keyboard, scroll sync
+│   ├── fan.js                 # fan: render, fan index, keyboard, live region
 │   ├── project.js             # project view + lightbox
 │   ├── about.js               # About view
 │   ├── menu.js                # menu button + popover
@@ -55,6 +55,15 @@ behaviour, not a bug in the router. Refresh at `/` only if you must use it.
 1. Append an object to `projects` in `content/projects.js` (copy an existing one).
 2. Create `assets/img/projects/<id>/` and drop in `hero.*` plus numbered gallery images.
 3. Point `hero.src` and `gallery[].src` at them.
+
+`name`, `subtitle`, `category` and `year` are the four strings painted on the card. `name` is the
+big overlaid title **and** the link's accessible name — the other three are `aria-hidden`, so a
+screen reader announces the project name once and does not read the whole card. `subtitle` and
+`year` are the small top-band labels; `category` is the bottom-right word.
+
+Only the front card shows its top band — a covered card shows its bottom band — so `name` and
+`category` must fit inside roughly one `--step` band or they will be clipped on every card but
+the first.
 
 Nothing else changes — no JS, no CSS, no route. The fan, the prev/next pager, and the live-region
 announcements all read from the same ordered array, so they cannot drift apart.
@@ -87,71 +96,131 @@ item a link) · `Founder` (CV block) · `Contact` (rendered from `site.contact`)
 Add, remove, or reorder sections by editing that array. To add a section with a shape that does
 not exist yet, add a branch to `renderSection()` in `js/about.js`.
 
-## How the nav works — a vertical flip column
+## How the nav works — a stacked deck in perspective
 
-Items sit in a **single column** and are flipped through about the **horizontal axis**
-(`rotateX`), which is the axis the group8.ch reference uses. There is no horizontal fan, and
-nothing rotates about Y.
+Cards overlap in a **single column** like a pile of prints. Every card is `--card-h` tall and
+advances only `--step` down the column, so consecutive cards overlap by `(--card-h − --step)`
+and a covered card is visible only in its **bottom `--step` band** — which is exactly where its
+name and category are painted. The name therefore sits **on the photograph** in display type, as
+it does on the reference, rather than in a caption strip underneath.
 
-The active card stands upright and centred. Every other card rotates about the edge **nearest**
-the active card, so neighbours tip *away* from it and the column reads as a tent receding into
-perspective (`--tilt` per step, plus Z-recession and shrink). Rotating every card about the same
-edge instead makes the card *above* lean out over the active one and hide it — that is exactly
-what the `data-side` attribute exists to prevent.
+Paint order is set once at build (`z-index` descending), so **card 1 sits over card 2 over card
+3** and every covered card keeps its bottom edge showing. That ordering is deliberately _not_
+updated as you move around: re-stacking would flip the visible bands to the cards' **tops** and
+the pile would stop reading as a pile.
 
-It is a real vertical scroll container, which buys two things hand-rolled gesture code cannot:
-**native momentum** on touch, and automatic clamping so the first and last card can both be
-centred without running off the end.
+The deck is in **ordinary document flow**. There is no fixed aperture, no nested scroller, no
+scroll-snap and no wheel handling — the page scrolls, so the nav cannot hijack the scroll. (The
+old nav was a fixed-aperture `rotateX` "flip column" with Step and Scroll modes; that geometry,
+the mode switch and `nav.mode` in `content/site.js` are all gone.)
 
-### Two advancing modes
+### Depth — the cards are raked, not flat
 
-Switchable live with the **Step / Scroll** control under the page heading, so the feel can be
-compared without a redeploy. The default is `nav.mode` in `content/site.js`, and a visitor's
-choice wins for the rest of their session.
+Every card is rotated about its **top edge** — `transform-origin: center top`,
+`rotateX(-1 × --rake)` — so it renders as a trapezoid with the **top edge wider than the
+bottom**: the bottom edge swings away from the viewer and therefore projects smaller. The front
+card leans `--tilt-base`; each card further back leans another `--tilt-step`, up to `--tilt-max`,
+so the pile recedes and the cards at the back read as almost flat. A `brightness()` falloff per
+step (`--sink`) supplies the aerial half of the effect.
 
-| Mode | Behaviour |
-|---|---|
-| **Step** (default) | One folder at a time. `scroll-snap-type: y mandatory` plus the browser's own fling gives touch momentum that always lands on exactly one card; wheel and arrow keys step exactly one card. |
-| **Scroll** | Free scrolling with native momentum; the flip follows the scroll position continuously. |
+Two details are easy to get wrong:
+
+- **`--persp` has to stay short.** The visible trapezoid is roughly
+  `(card height × sin(rake)) / perspective`, so a long projection makes even a large rake
+  invisible. That is why the reference uses `20vw`, and why this file uses
+  `clamp(340px, 32vw, 880px)`. Reaching for `1000px` here silently flattens the deck again.
+- **The rake keys off `--pile` — the card's fixed place in the pile — never off `--i`.** Keying
+  it to the focus looked identical at rest and was wrong the moment you pointed at anything:
+  every card above the pointer stood up at once, so the deck _flattened_ exactly while it was
+  being used, and because the pointer's target moved while the geometry changed it could flap
+  between two cards.
+
+For the record, on the reference itself: its **index items carry no 3D of their own**. The origin
+and sign used here are borrowed from the transforms it does have — `.ShowcaseView_picture`
+(`transform-origin: top; rotateX(-1.5deg)`) and `.GalleryView_item > picture`
+(`transform-origin: top; rotateX(-5deg)`), both inside `perspective: 20vw` — and from
+`.NextProject_picture`, which takes the same sign the long way round
+(`transform-origin: center bottom; rotateX(progress × 50deg − 90deg)`, so progress 0 is edge-on and
+invisible). Its one index-level depth cue is `filter: grayscale(1)` on whatever you are not
+pointing at. There is **no `rotateY` anywhere** in that stylesheet, so nothing here leans
+sideways either. Raking our own items is therefore a deliberate choice, not a copy.
+
+### Hover, keyboard and the front card
+
+Hovering the deck **fans it open**: `--fan-spread-active` rises, and every card steps away from
+the one under the pointer. The push is uniform — the _sign_ of `--i`, not its magnitude — the
+same gesture as the reference's `:hover ~ .ListView_item { translate3d(0, 12.4rem, 0) }`. Uniform
+also caps the deck's overhang at one spread instead of `(n − 1) × spread`.
+
+Pointer and keyboard are deliberately separate:
+
+|            | Drives                               | Behaviour                                                                                                                            |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `fanIndex` | `--i` → the fan                      | Follows the pointer while it is over the deck, otherwise the keyboard cursor. Feeds a transform only, so re-fanning costs no reflow. |
+| `active`   | the live region and `sessionStorage` | Moves with `↑`/`↓`/`←`/`→`/`PageUp`/`PageDown`/`Home`/`End`, wraps at both ends, and is restored for the session.                    |
+
+Arrow keys also re-centre the fan, but only while the pointer is _away_ from the deck — otherwise
+the mouse and the keys would fight over `--i`.
 
 ### Tuning
 
 ```
---card-w   card width
---card-h   card height — the column's unit
---step     vertical advance per card. Less than --card-h = overlap.
---tilt     rotation per step, about the card's NEAR edge
---recede   how far each step is pushed back in Z
---shrink   how much far cards shrink
+--card-w             card width
+--card-h             card height
+--step               advance per card — also the height of the band a covered card shows
+--fan-spread         how far the pile opens on hover
+--fan-spread-active  ← the live value; 0 unless the deck is hovered or focus-visible
+--persp              projection depth, applied per card. SHORT on purpose — see above
+--persp-origin       the vanishing point within each card
+--tilt-base          the front card's lean
+--tilt-step          extra lean per card further back in the pile
+--tilt-max           ceiling; near 60deg is the "almost flat" end
+--sink               how much a card dims per step back
 ```
 
-All six live at the top of `fan.css`. The only JS-set values are `--i` (signed relative index),
-`--a` (`Math.abs(--i)`), `data-side`, `data-depth` and `data-mode`.
+All of them live at the top of `fan.css`. The only JS-set values are `--i` (signed relative
+index), `--pile` (the card's fixed position in the pile) and the `z-index` paint order.
 
-Verified geometry: the column advances a uniform `--step`, `scrollHeight - clientHeight` is
-exactly `(n − 1) × --step`, and the active card centres to the pixel at both index 0 and index
-n−1.
+Verified at 1280×900 with 7 cards: rake `-4, -14, -24, -34, -44, -54, -60`deg; projected card
+height `297 → 147`px; measured trapezoid `630→598`px on the front card (5.1% narrower at the
+bottom) widening to `628→392`px (37.6%) on the last — with the rendered width staying at the top
+edge's full 630/628px throughout, which is what makes it a trapezoid rather than a resize. Deck
+flow height stays `(n − 1) × --step + --card-h` = 765 with no gap and no overflow, and `body`
+gains exactly one `--fan-spread` of overhang while the fan is open. Re-checked at 1440×780,
+390×844, 320×568 and 844×390 — uniform step and **no horizontal overflow** at every size, with the
+rake reduced on phones because the projection is already at its floor there.
 
-### Two traps worth knowing before you touch this
+The trade-off to know about: a deeply raked card's title is foreshortened with it — about 22px on
+the front card down to ~8px on the last. That is the depth reading rather than a bug, but if the
+labels need to stay larger, bring `--tilt-max` down (44deg keeps the last title near 13px) or raise
+`--sink` and let the aerial falloff do more of the receding.
 
-**The transform lives on `.fan__flip`, not on the `<li>`.** The `<li>` is the scroll snap target,
-and a transform on it displaces its computed snap position — with the transform on the `<li>`,
-every snap point landed 22px off centre and the column appeared stuck.
+### Three traps worth knowing before you touch this
 
-**Nothing depends on `requestAnimationFrame`.** Browsers suspend animation frames for a hidden or
-occluded page, so a rAF-driven scroll tween silently never advances and the nav looks frozen in a
-background tab or an editor's preview pane. Programmatic moves use native `smooth` scrolling with
-a `setTimeout` safety check (timers still fire while hidden), and the scroll-position sync uses
-`setTimeout` too.
+**The `<li>` must not be hit-testable.** `.fan__item` carries `pointer-events: none` and
+`.fan__card` puts it back. The `<li>` is the only box in the pile that is _not_ foreshortened — it
+stays `--card-h` tall while the card inside collapses upward under the rake — so the li in front
+sticks out well past the card it actually shows, and a transparent box still hit-tests. Measured
+before the fix: card 3's title fell inside li 2's box, so it was **visible but dead** to both click
+and hover.
+
+**Both ramps in `.fan__scrim` are measured in `--step`, not in percentages.** `--step` _is_ the
+band the pile leaves showing, so a percentage ramp darkens the whole of a covered card at exactly
+the height where its photograph is the only thing on screen — and the deck then reads as a list
+of empty rows. That is what the first pass actually looked like.
+
+**Both transforms — the rake and the fan — live on `.fan__flip`.** Nothing may be added to
+`.fan__card`: a transform there would fight the flip's, and emphasis is the hairline, the shadow
+and the focus ring, nothing else.
 
 ## Deployment — two Netlify sites from one repo
 
 This repo hosts **two independent sites**, distinguished by their Netlify **base directory**:
 
-| | Site | Base dir | Publish dir | Config |
-|---|---|---|---|---|
-| #1 | the presentation deck | *(repo root)* | `presentation_site` | root `netlify.toml` |
-| #2 | **this portfolio site** | `site` | `.` | `site/netlify.toml` |
+|     | Site                    | Base dir      | Publish dir         | Config              |
+| --- | ----------------------- | ------------- | ------------------- | ------------------- |
+| #1  | the presentation deck   | _(repo root)_ | `presentation_site` | root `netlify.toml` |
+| #2  | **this portfolio site** | `site`        | `.`                 | `site/netlify.toml` |
 
 Netlify reads the `netlify.toml` found at the site's base directory, which is why the two files
 coexist without one overriding the other.
@@ -172,10 +241,10 @@ deep links work in production. Without it `/project/001` returns a Netlify 404.
 Placeholder drawings are SVG (a few KB each) and are not representative. Real photography must
 hit these targets or the nav will feel broken on a phone:
 
-| Slot | Target |
-|---|---|
-| Project hero | ≤ 180 KB |
-| Gallery image | ≤ 120 KB |
+| Slot            | Target          |
+| --------------- | --------------- |
+| Project hero    | ≤ 180 KB        |
+| Gallery image   | ≤ 120 KB        |
 | Video (if used) | ≤ 4 MB for ~20s |
 
 ```sh

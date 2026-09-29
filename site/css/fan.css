@@ -1,28 +1,39 @@
 /* ============================================================================
- * fan.css — the portfolio nav: a VERTICAL flip column.
+ * fan.css — the portfolio nav: a STACKED DECK IN PERSPECTIVE.
  *
- * Items sit in a single column and are "flipped through" about the HORIZONTAL
- * axis (`rotateX`), each rotating about its own top or bottom edge so neighbours
- * tip AWAY from the active card. The active card stands upright and the column
- * forms a tent / rolodex shape receding into perspective.
+ * Cards overlap in a single column like a pile of prints lying away from you.
+ * Consecutive cards overlap by (--card-h - --step), so a covered card shows only
+ * its bottom --step band — and that band is where the name and the category
+ * live, so a covered card stays legible and clickable.
  *
- * This is the axis the group8.ch reference uses: its `.NextProject_picture` drives
- * `rotateX(calc(var(--progress) * 50deg - 90deg))` with
- * `transform-origin: center bottom`. Nothing in that stylesheet rotates about Y.
+ * The deck is NOT flat. Every card is raked about its TOP edge (rotateX), so it
+ * reads as a trapezoid with the top edge wider than the bottom: the bottom edge
+ * swings AWAY from the viewer and therefore projects smaller. The front card
+ * leans a little (--tilt-base); each card BELOW it leans progressively further,
+ * up to --tilt-max, so the pile recedes and the cards at the back read as almost
+ * flat.
  *
- * It is a real vertical scroll container, which buys two things hand-rolled
- * gesture code cannot: native momentum (especially on touch) and automatic
- * clamping, so the first and last card can both be centred without clipping.
+ * That origin and sign are the reference's own. `.ShowcaseView_picture` uses
+ * `transform-origin: top; rotateX(-1.5deg)` on hover and `.GalleryView_item >
+ * picture` uses `transform-origin: top; rotateX(-5deg)`, both inside
+ * `perspective: 20vw` — a deliberately SHORT projection, which is what makes a
+ * few degrees legible at all. `.NextProject_picture` takes the same sign the long
+ * way round (`transform-origin: center bottom; rotateX(progress x 50deg - 90deg)`,
+ * so progress 0 is edge-on and invisible). There is no rotateY anywhere in that
+ * stylesheet, so nothing here leans sideways either.
+ *
+ * The deck is in ordinary document flow: no fixed aperture, no nested scroller,
+ * no scroll-snap and no wheel handling, so it cannot hijack the scroll.
  *
  * Geometry contract with fan.js:
- *   --i         signed relative index (index - active). Active is 0.
- *   --a         Math.abs(--i)
- *   data-side   "above" | "below" — set by JS; picks the transform-origin edge
- *   data-mode   "snap" | "scroll" — set on .fan
+ *   --i    signed relative index (index - fanIndex); 0 for the card the deck fans
+ *          out from. Set by JS.
+ *   z-index  set once at build by JS — earlier cards paint over later ones, which
+ *          is what keeps a covered card's visible band its BOTTOM edge.
  *
- * Layout maths: each item is --card-h tall with a block margin of
- * (--step - --card-h), so the column advances exactly --step per card and the
- * scrollable span is (n-1) * --step.
+ * Layout maths: each item advances --step down the column and is --card-h tall;
+ * the negative block margin (--step - --card-h) is that overlap. Only two
+ * transforms exist in the file: the rake (--rake) and the fan (--dir x spread).
  * ========================================================================== */
 
 .page--home {
@@ -32,115 +43,54 @@
   padding-block-end: 0;
 }
 
-.page--home .page__head { margin-bottom: 1.25rem; }
-
-/* ------------------------------------------------- mode toggle (Step/Scroll) */
-
-.modes {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.9rem;
+.page--home .page__head {
+  margin-bottom: 2rem;
 }
 
-.modes__label {
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.modes__group {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--glass-border);
-  border-radius: 999px;
-  background: var(--surface);
-}
-
-.modes__btn {
-  min-height: 32px;
-  padding: 0 0.85rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-
-.modes__btn[aria-pressed="true"] {
-  background: var(--accent);
-  color: #101014;
-}
-
-/* ------------------------------------------------------------------- fan --- */
+/* --------------------------------------------------------------- the deck -- */
 
 .fan {
-  /* -------- the only knobs you need to tune the flip -------- */
-  --card-w: min(92vw, 44rem); /* card width */
-  --card-h: clamp(190px, 27vh, 272px); /* card height — the column's unit */
-  --step: clamp(60px, 9.5vh, 94px); /* vertical advance (< --card-h = overlap) */
-  --tilt: 11deg; /* rotation per step, about the card's NEAR edge */
-  --recede: 70px; /* how far each step is pushed back in Z */
-  --shrink: 0.02; /* how much far cards shrink */
+  /* -------- the only knobs you need to tune the deck -------- */
+  --card-w: min(92vw, 40rem); /* card width */
+  --card-h: clamp(220px, 34vh, 340px); /* card height */
+  --step: clamp(58px, 8.5vh, 92px); /* advance per card — also the visible band */
+  --fan-spread: clamp(16px, 3vh, 28px); /* how far the pile opens up on hover */
+  --fan-spread-active: 0px; /* ← raised by the two rules below */
 
-  /* The aperture the column is seen through. This is also the perspective origin,
-   * so it must be a length we control — NOT a percentage, because percentage
-   * padding-block resolves against the containing block's inline size (width),
-   * which would silently centre on the wrong axis. */
-  --view-h: min(70vh, 620px);
+  /* -------- depth --------
+   * --persp has to stay SHORT. The visible trapezoid is roughly
+   * (card height x sin(rake)) / --persp, so a long projection makes even a large
+   * rake invisible — which is exactly why the reference uses 20vw here rather
+   * than the 1000px+ people reach for by reflex. */
+  --persp: clamp(340px, 32vw, 880px); /* projection depth, applied per card */
+  --persp-origin: 50% 45%; /* vanishing point; above centre tips the card forward */
+  --tilt-base: 4deg; /* the front card's lean */
+  --tilt-step: 10deg; /* extra lean per card further back in the pile */
+  --tilt-max: 60deg; /* ceiling — a card this far back reads as almost flat */
+  --sink: 0.07; /* how much a card dims per step back (aerial perspective) */
 
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  height: var(--view-h);
-  perspective: 1500px;
-  perspective-origin: 50% 50%;
-
-  /* real scroll container: native momentum on touch, clamped at both ends */
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-
-  /* Deliberately NO `scroll-behavior: smooth`. Smooth scrolling is not
-   * implemented in every Chromium build (measured 2026-09-23 in the VS Code
-   * embedded browser: both scrollTo({behavior:"smooth"}) and scroll-behavior:
-   * smooth silently swallowed the scroll and left the active card stranded
-   * off-centre). Programmatic moves are tweened with requestAnimationFrame in
-   * fan.js instead — see glide(). Native touch/trackpad momentum is unaffected. */
-
-  /* a swipe at either end must not trigger iOS overscroll / back-navigation */
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
-
-  /* half an aperture minus half a card, so card 0 and card n-1 can also centre */
-  padding-block: calc(var(--view-h) / 2 - var(--card-h) / 2);
-
   margin: 0;
+  padding: 0;
   list-style: none;
 }
 
-.fan::-webkit-scrollbar { display: none; }
-
-/* Step mode — one folder at a time. Mandatory snapping plus the browser's native
- * fling is what gives touch devices momentum that lands exactly on the next card. */
-.fan[data-mode="snap"] { scroll-snap-type: y mandatory; }
-.fan[data-mode="snap"] .fan__item { scroll-snap-align: center; }
-
-/* Scroll mode — free scrolling; rotation is driven continuously by position. */
-.fan[data-mode="scroll"] { scroll-snap-type: none; }
-
+/* The pile. A NEGATIVE step: every card after the first starts --step below the
+ * one before it while staying --card-h tall. That difference IS the overlap. */
 .fan__item {
   --i: 0; /* signed relative index — set by JS */
-  --a: 0; /* Math.abs(--i) — set by JS */
+  --pile: 0; /* this card's FIXED place in the pile — set by JS */
+
+  /* Each card carries its own projection rather than sharing one with the deck.
+   * That is the reference's pattern — perspective sits on the ITEM
+   * (`.ShowcaseView_item { perspective: 20vw }`), not on the list — and it keeps
+   * every card's trapezoid symmetric about its own axis instead of making the
+   * whole deck converge on one remote vanishing point. */
+  perspective: var(--persp);
+  perspective-origin: var(--persp-origin);
 
   display: flex;
   flex-direction: column;
@@ -148,173 +98,231 @@
   width: var(--card-w);
   max-width: 100%;
 
-  /* a NEGATIVE step: this overlap is the stack of folders */
   margin-block-start: calc(var(--step) - var(--card-h));
 
-  /* The apex model. Each card rotates about the edge NEAREST the active card, so
-   * both directions tip away from it and the column reads as a tent. Rotating
-   * every card about the same edge instead makes the card ABOVE lean out over the
-   * active one and occlude it. */
-  transform-origin: center bottom;
-  --rot: calc(var(--a) * var(--tilt));
+  /* A transparent box still hit-tests, and the <li> is the one box in the pile that
+   * is NOT foreshortened: it stays --card-h tall while the card inside it collapses
+   * upward under the rake. So the li in FRONT sticks out well past the card it
+   * shows, and it was swallowing clicks on the card behind it — measured, card 3's
+   * title landed inside li 2's box, i.e. visible but dead. Only the card is
+   * interactive, because the card is the only thing actually painted. */
+  pointer-events: none;
 }
 
-/* the card above pivots on its TOP edge instead, and leans the other way */
-.fan__item[data-side="above"] {
-  transform-origin: center top;
-  --rot: calc(var(--a) * var(--tilt) * -1);
+.fan__item:first-child {
+  margin-block-start: 0;
 }
 
-/* The 3D flip lives on this inner wrapper, NOT on the <li>. The <li> is the scroll
- * snap target, and a transform on it displaces its computed snap position — with
- * the transform on the <li>, every snap point landed 22px off centre and the
- * column looked stuck (measured 2026-09-23: it always snapped back to 96 instead
- * of 74). Keeping the snap box untransformed keeps the scroll geometry honest. */
+/* The rake, then the fan. Both are transforms, so neither moves any layout: the
+ * pile's positions stay put, the deck cannot grow a gap at its end, and the page
+ * keeps scrolling normally while the fan is open.
+ *
+ * The rake keys off --pile, which is the card's FIXED place in the pile — not off
+ * --i. Keying it to the focus looked right at rest and was wrong the moment you
+ * pointed at anything: every card above the pointer stood up at once, so the deck
+ * flattened instead of deepening, and because the pointer's target moved while the
+ * geometry changed it could even flap between two cards.
+ *
+ * --dir collapses --i to its SIGN, so the fan push is uniform rather than
+ * proportional to distance — the same gesture as the reference's
+ * `:hover ~ .ListView_item { translate3d(0, 12.4rem, 0) }`, and it caps the deck's
+ * overhang at one --fan-spread instead of (n-1) x --fan-spread. */
 .fan__flip {
+  --dir: clamp(-1, var(--i), 1);
+  --rake: min(calc(var(--tilt-base) + var(--pile) * var(--tilt-step)), var(--tilt-max));
+
   flex: 1 1 auto;
   min-height: 0;
-  transform-origin: inherit;
-  transform: rotateX(var(--rot))
-    translateZ(calc(var(--a) * var(--recede) * -1))
-    scale(calc(1 - var(--a) * var(--shrink)));
+
+  /* Origin at the TOP edge: the bottom edge swings AWAY from the viewer and so
+   * projects smaller, giving the top-wider-than-bottom trapezoid. */
+  transform-origin: center top;
+  transform: translateY(calc(var(--dir) * var(--fan-spread-active)))
+    rotateX(calc(-1 * var(--rake)));
   transition: transform var(--dur-slow) var(--ease-out);
 }
 
-/* the first card must not be pushed out by the overlap margin */
-.fan__item:first-child { margin-block-start: 0; }
-
-/* z-order: the active card on top, neighbours behind it. */
-.fan__item[data-depth="0"] { z-index: 20; }
-.fan__item[data-depth="1"] { z-index: 19; }
-.fan__item[data-depth="2"] { z-index: 18; }
-.fan__item[data-depth="3"] { z-index: 17; }
-.fan__item[data-depth="4"] { z-index: 16; }
-
-/* Bring the hovered or focused folder to the FRONT. Without this its lift stays
- * partly buried behind its neighbours, which reads as a broken hover. */
-.fan__item:has(.fan__card:hover),
-.fan__item:focus-within { z-index: 30; }
+/* Pointing at, or tabbing through, the deck opens the fan. */
+.fan:has(.fan__card:hover),
+.fan:has(.fan__card:focus-visible) {
+  --fan-spread-active: var(--fan-spread);
+}
 
 /* ------------------------------------------------------------------ card --- */
 
 .fan__card {
-  display: flex;
-  flex-direction: column;
+  position: relative; /* containing block for the image and the overlaid type */
+  display: block;
   width: 100%;
   height: 100%; /* the item is --card-h tall; the card fills it so heights match */
-  color: var(--text);
+  overflow: hidden;
+  color: #fff; /* the type sits on a photograph, not on the page background */
   text-decoration: none;
   background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.09); /* the edge of the print */
   border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.5);
+
+  /* Re-enabled after .fan__item switched its own box off: the card's foreshortened
+   * quad is the pile's only real hit area. See the note on .fan__item. */
+  pointer-events: auto;
+
+  /* Aerial perspective: the further back a card sits in the pile, the less
+   * contrast it carries. Without it a raked card still reads as a flat panel that
+   * merely happens to be shorter, and the pile loses its depth again. */
+  filter: brightness(calc(1 - var(--pile) * var(--sink)));
+
   transition:
     box-shadow var(--dur) var(--ease-out),
     border-color var(--dur) var(--ease-out);
 }
 
-/* No translate lift here: a transform on the card would fight the item's rotateX
- * and the two would fight over the same 3D space. Emphasis comes from the
- * border, the shadow, and the item's z-index. */
-.fan__card:hover,
-.fan__card:focus-visible {
+/* No transform on the card: the fan lives on .fan__flip, and a second transform
+ * over the same box would fight it. Emphasis is the edge, the shadow and the
+ * focus ring. */
+.fan__item:has(.fan__card:hover) .fan__card,
+.fan__item:focus-within .fan__card {
   border-color: rgba(201, 168, 106, 0.5);
-  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.62);
+  box-shadow: 0 30px 72px rgba(0, 0, 0, 0.68);
 }
 
-.fan__tab {
-  display: block;
-  width: 44%;
-  height: 10px;
-  background: var(--accent);
-  border-radius: 6px 6px 0 0;
-  opacity: 0.85;
+.fan__card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
+/* The image fills the card. It sits inside an absolutely-positioned box, so its
+ * percentage height resolves against a definite one. In normal flow at this size
+ * it would fall back to the image's intrinsic ratio and drive the card's height
+ * instead — which is how the old column's step silently became 4x the intent. */
 .fan__thumb {
-  display: block;
-  position: relative; /* containing block for the absolutely-filled image */
-  flex: 1 1 0;
-  min-height: 0; /* lets the image shrink inside the fixed-height card */
-  background: var(--surface-2);
-  overflow: hidden;
-}
-
-/* The image is positioned absolutely on purpose. In normal flow with
- * `height: 100%` it has no definite height to resolve against (the thumb is a
- * flex item with no set height), so it falls back to its intrinsic 3:2 ratio and
- * forces the card to ~425px — which silently overrode the item's flex-basis and
- * made the column's real step 4x the intended value. Taking it out of flow
- * removes it from the intrinsic-size calculation entirely. */
-.fan__thumb img {
   position: absolute;
   inset: 0;
+  display: block;
+  background: var(--surface-2);
+}
+
+.fan__thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.fan__meta {
-  display: block;
-  padding: 0.8rem 0.95rem 0.95rem;
+/* One gradient set, two jobs: legibility for the overlaid type, and the soft edge
+ * that makes the next card look like it slides out from under this one — the same
+ * trick as group8's `.ListView_item:after` white band, inverted for a dark theme.
+ *
+ * Both ramps are measured in --step, not in percentages, because --step IS the
+ * band the pile leaves showing. A percentage ramp would darken the whole of a
+ * covered card at exactly the height where its photograph is the only thing on
+ * screen, and the deck would read as a list of empty rows. */
+.fan__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(11, 11, 15, 0.72) 0, rgba(11, 11, 15, 0.34) calc(var(--step) * 0.9), rgba(11, 11, 15, 0) calc(var(--step) * 2.4)),
+    linear-gradient(to bottom, rgba(11, 11, 15, 0.45), rgba(11, 11, 15, 0) calc(var(--step) * 0.7));
 }
 
-.fan__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+/* --------------------------------------------------- overlaid card type ---- */
+
+/* The name sits ON the image in display type, not in a caption strip beneath it —
+ * that is the reference's signature move (`EN COURS` / `BELLE-TERRE` over the
+ * photograph). It also has to survive being the only part of a covered card left
+ * on screen, so the name, the year and the category all live in the bottom --step
+ * band — which is exactly what a covered card leaves showing. */
+.fan__title,
+.fan__cat,
+.fan__tag,
+.fan__year {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.fan__name { display: block; font-size: 0.95rem; }
+.fan__title {
+  inset-block-end: clamp(0.7rem, 1.6vw, 1.1rem);
+  inset-inline-start: clamp(0.85rem, 2vw, 1.5rem);
+  max-width: 74%;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
 
-.fan__num {
-  font-size: 0.72rem;
+.fan__cat {
+  inset-block-end: clamp(0.8rem, 1.8vw, 1.2rem);
+  inset-inline-end: clamp(0.85rem, 2vw, 1.5rem);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.66);
+}
+
+/* The top band shows only on the front card — which is the point: every other card
+ * offers its BOTTOM edge, so the pile reads as a stack of covered photographs
+ * rather than as a list. */
+.fan__tag {
+  inset-block-start: clamp(0.7rem, 1.6vw, 1.1rem);
+  inset-inline-start: clamp(0.85rem, 2vw, 1.5rem);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--accent);
-  letter-spacing: 0.08em;
 }
 
-.fan__sub {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-top: 0.2rem;
+.fan__year {
+  inset-block-start: clamp(0.7rem, 1.6vw, 1.1rem);
+  inset-inline-end: clamp(0.85rem, 2vw, 1.5rem);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-/* pointer-only emphasis: a touch device must not inherit a stuck :hover */
+/* a touch device must not inherit a stuck :hover and leave the deck hanging open */
 @media (hover: none) {
-  .fan__card:hover {
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+  .fan:has(.fan__card:hover) {
+    --fan-spread-active: 0px;
   }
 }
 
-/* phones — the column is the same, just less skew and shorter cards so more of
- * the stack is visible at once */
+/* phones — a shorter card and a tighter pile, so more of the deck is on screen.
+ * The rake comes down too: the projection is already at its floor here, so the
+ * full desktop angles would tip the cards past legibility. */
 @media (max-width: 560px) {
   .fan {
-    --tilt: 8deg;
-    --recede: 40px;
-    --shrink: 0.015;
-    --card-h: clamp(158px, 24vh, 220px);
-    --step: clamp(52px, 8.5vh, 78px);
-    --view-h: min(64vh, 520px);
+    --card-w: 100%;
+    --card-h: clamp(180px, 30vh, 250px);
+    --step: clamp(54px, 8vh, 74px);
+    --tilt-step: 9deg;
+    --tilt-max: 46deg;
+  }
+
+  .fan__title {
+    max-width: 84%;
   }
 }
 
-/* landscape phone — very little vertical room, so shorten the aperture */
+/* landscape phone — very little vertical room, so shorten the pile */
 @media (max-height: 520px) and (orientation: landscape) {
   .fan {
-    --view-h: min(78vh, 380px);
-    --card-h: clamp(150px, 30vh, 200px);
-    --step: clamp(46px, 11vh, 68px);
+    --card-h: clamp(150px, 34vh, 205px);
+    --step: clamp(48px, 12vh, 66px);
+    --tilt-step: 8deg;
+    --tilt-max: 40deg;
   }
-  .page--home .page__head { margin-bottom: 0.4rem; }
-  .page--home .page__lede { display: none; }
+  .page--home .page__head {
+    margin-bottom: 0.6rem;
+  }
+  .page--home .page__lede {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fan { scroll-behavior: auto; }
-  .fan__flip, .fan__card { transition-duration: 1ms; }
+  .fan__flip,
+  .fan__card {
+    transition-duration: 1ms;
+  }
 }

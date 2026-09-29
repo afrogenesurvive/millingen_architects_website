@@ -16,6 +16,7 @@ export const projects = [
     id: "001",
     name: "Coastal House",
     subtitle: "Private residence",
+    category: "Projects",
     year: "2021",
     order: 1,
     placeholder: true,
@@ -35,9 +36,16 @@ export const projects = [
       { src: "assets/img/projects/001/03.svg", alt: "Stair detail — placeholder drawing" },
     ],
     body: [
-      { type: "text", value: "Placeholder description. Replace with the project narrative: the brief, the constraint that shaped it, and the move that resolved it." },
+      {
+        type: "text",
+        value:
+          "Placeholder description. Replace with the project narrative: the brief, the constraint that shaped it, and the move that resolved it.",
+      },
       { type: "quote", value: "The plan follows the water table, not the street." },
-      { type: "text", value: "A second placeholder paragraph — typically where the material palette, the site response, or the construction story goes." },
+      {
+        type: "text",
+        value: "A second placeholder paragraph — typically where the material palette, the site response, or the construction story goes.",
+      },
     ],
   },
 
@@ -45,6 +53,7 @@ export const projects = [
     id: "002",
     name: "Courtyard Studio",
     subtitle: "Workspace",
+    category: "Projects",
     year: "2018",
     order: 2,
     placeholder: true,
@@ -72,6 +81,7 @@ export const projects = [
     id: "003",
     name: "Dune Pavilion",
     subtitle: "Cultural",
+    category: "Projects",
     year: "2022",
     order: 3,
     placeholder: true,
@@ -101,6 +111,7 @@ export const projects = [
     id: "004",
     name: "Canal Warehouse",
     subtitle: "Adaptive reuse",
+    category: "Projects",
     year: "2020",
     order: 4,
     placeholder: true,
@@ -128,6 +139,7 @@ export const projects = [
     id: "005",
     name: "Woodland Retreat",
     subtitle: "Private residence",
+    category: "Projects",
     year: "2023",
     order: 5,
     placeholder: true,
@@ -155,6 +167,7 @@ export const projects = [
     id: "006",
     name: "Civic Library",
     subtitle: "Public",
+    category: "Projects",
     year: "2018",
     order: 6,
     placeholder: true,
@@ -182,6 +195,7 @@ export const projects = [
     id: "007",
     name: "Roof Extension",
     subtitle: "Residential",
+    category: "Projects",
     year: "2024",
     order: 7,
     placeholder: true,
@@ -213,6 +227,4 @@ export const projects = [
 
 export const bySlug = Object.fromEntries(projects.map((p) => [p.id, p]));
 
-export const ordered = [...projects].sort(
-  (a, b) => (a.order ?? 999) - (b.order ?? 999) || Number(b.year) - Number(a.year)
-);
+export const ordered = [...projects].sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || Number(b.year) - Number(a.year));

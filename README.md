@@ -8,7 +8,7 @@ deployable to Netlify with no build step.
 - [`presentation_site/`](presentation_site/) — **the cinematic presentation deck.** Fullscreen
   auto-playing slideshow; renders entirely from one config file (`js/slides.config.js`), so the
   same engine can be reused for any pitch.
-- [`site/`](site/) — **the portfolio site.** Vertical flip-column nav, project pages with
+- [`site/`](site/) — **the portfolio site.** Stacked-deck nav in perspective, project pages with
   galleries and a lightbox, an About page, and a menu popover. See
   [`site/README.md`](site/README.md).
 - `netlify.toml` — Netlify config for the deck (publishes `presentation_site/`)
@@ -20,7 +20,7 @@ served from the repo root, the portfolio from `site/` (see `site/netlify.toml`).
 
 ### Portfolio site (`site/`)
 
-- Vertical flip-column portfolio nav with a Step / Scroll mode switch — see
+- Stacked-deck portfolio nav in perspective — hover to fan the pile open, arrows to step — see
   [`site/README.md`](site/README.md)
 - Deep-linkable project pages (`/project/<id>`): hero, facts list, prose, gallery, lightbox
 - About page (practice, services, policies, founder CV, contact) driven by one content file
