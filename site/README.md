@@ -98,70 +98,107 @@ not exist yet, add a branch to `renderSection()` in `js/about.js`.
 ## How the nav works — a full-bleed stacked deck
 
 Cards overlap in a **single column** like a pile of prints. Each card is pulled up over the one
-before it by `--overlap` (a negative `margin-block-end`), and its height comes from the picture —
-`aspect-ratio: 7 / 5` on `.fan__card`, there is no `--card-h`. At 1440×900 that is a 1312×937 card
-showing a 775px band, so the deck reads as **roughly one project per screen**, with the next one
-sliding up over the strip below.
+before it by a per-card overlap (a negative `margin-block-end`), and its height comes from the
+picture — `aspect-ratio: 7 / 5` on `.fan__card`, there is no `--card-h`.
+
+**The band is two-tier.** The focused card at the front of the pile is left mostly exposed — it is
+the one you are looking at — and every card _after_ it is pulled much further up, so the tail reads
+as a tight stack of thin bands rather than a second and third hero. Both tiers are set as a
+**percentage pair**, `--overlap` / `--overlap-tail`, and each card picks one:
+
+```css
+--overlap-here: calc(var(--overlap) + min(1, var(--pile)) * (var(--overlap-tail) - var(--overlap)));
+```
+
+`min(1, --pile)` is the tier switch — 0 for the focused card, 1 for everything after it.
+
+⚠️ **The percentages are load-bearing, not a style choice.** In `margin-block-end` a percentage
+resolves against the containing block's **inline** size, which here _is_ the card width — and the
+card's height is 5/7 of that width. So a percentage overlap scales with the card instead of going
+stale. The previous `clamp(120px, 18vh, 240px)` did not: a viewport-height value has no relationship
+to a width-driven card, and on a wide-but-short window it silently exceeded the card height and the
+band went negative. `--overlap-h` restates the result against the card **height** — the base that
+`inset-block-end` and gradient stops use — hence the 7/5, which is the one place the card's ratio is
+hard-coded.
 
 Paint order is set once at build (`z-index` = `index + 1`), so **card 2 sits over card 1, card 3
 over card 2** — the reference's own behaviour, where its index items carry no `z-index` at all and
-document order decides. Because each card is pulled *up* over the previous one, painting the later
+document order decides. Because each card is pulled _up_ over the previous one, painting the later
 card on top is what leaves a covered card's **top** band showing. That ordering is deliberately
 _not_ updated as you move around: re-stacking would flip every visible band to the cards'
 **bottoms** and the pile would stop reading as a pile.
 
-That is what `--label-lift` is for. The covered strip is `--overlap` tall, so the bottom-anchored
-type sits at `--label-lift` (`--overlap` + a small gap) rather than flush to the card's edge, which
-would put it underneath the next card. `subtitle` and `year` sit on the top band, which is the part
-a covered card leaves showing.
+That is what `--label-lift` is for. The covered strip is the card's own overlap tall, so the
+bottom-anchored type sits at `--label-lift` (`--overlap-h` + a small gap) rather than flush to the
+card's edge, which would put it underneath the next card. It is derived **per card**, so the type
+lands the same small gap above the seam whether the card is the focused one or a thin band in the
+tail. `subtitle` and `year` sit on the top band, which is the part a covered card leaves showing.
 
 The deck is in **ordinary document flow**. There is no fixed aperture, no nested scroller, no
 scroll-snap and no wheel handling — the page scrolls, so the nav cannot hijack the scroll. (The
 old nav was a fixed-aperture `rotateX` "flip column" with Step and Scroll modes; that geometry,
 the mode switch and `nav.mode` in `content/site.js` are all gone.)
 
-### Depth — the rake is off by default
+### Depth — the rake, and which way is "forward"
 
 `--rake` is a **0–1 factor over the whole ramp**, not an angle, so a single value switches the deck
-between the reference's flat stack (`--rake: 0`) and the tilted deck the client asked for
-(`--rake: 1`). Nothing else differs between the two modes: `--persp`, `--persp-origin`, `--tilt-*`
-and the JS-set `--pile` all stay in place and go inert at 0, because `rotateX(0deg)` is the
-identity.
+between the tilted deck (`--rake: 1`, the current setting) and the reference's flat stack
+(`--rake: 0`). Nothing else differs between the modes: `--persp`, `--persp-origin`, `--tilt-*` and
+the JS-set `--pile` all stay in place and go inert at 0, because `rotateX(0deg)` is the identity.
 
-With `--rake: 1` every card rotates about its **top edge** — `transform-origin: center top`,
-`rotateX(-1 × --rake-deg)` — so it renders as a trapezoid with the **top edge wider than the
-bottom**: the bottom edge swings away from the viewer and therefore projects smaller. The rake ramps
-back from the front card: `--tilt-focus` + `--pile × --tilt-step`, capped at `--tilt-max`.
+**Sign convention — settled by measurement, because this doc has had it backwards.** With
+`transform-origin: center top` and `rotateX(-1 × --rake-deg)`:
 
-⚠️ **The rake does not survive the current density.** It was tuned when a card showed a 46–77px
-band; at the reference's density a card shows ~775px, and foreshortening removes more height than
-`--overlap` can absorb. Measured at 1280×900 with `--rake: 1`: projected heights
-`658, 573, 506, 448, 409, 409, 409` against a 661px band. The cards stop overlapping, the pile
-reads as a spaced column, and the bottom-anchored type falls outside its band. Making `--rake: 1`
-usable again needs its own pass: raise `--overlap` to clear the projection loss **and** re-derive
-where the labels go, because under rotation a point at distance *d* from the top edge no longer
-renders at *d* — and with no `cos`/`sin` in CSS, a single `--label-lift` cannot be corrected per
-card. Treat `--rake: 1` as a working switch, not a signed-off look.
+| `--rake-deg` | projected width      | projected height | reads as                                               |
+| ------------ | -------------------- | ---------------- | ------------------------------------------------------ |
+| `0`          | 1152 (layout)        | 823 (layout)     | flat                                                   |
+| **`+20`**    | **1152 — unchanged** | **609**          | bottom recedes → top nearest = **leaning FORWARD**     |
+| `−20`        | **3681**             | 1658             | bottom swings at you → magnified, spills the column    |
 
-Everything below still holds whenever the rake is used:
+So **positive = leaning forward = the top of the card appears nearest**, and it is also the **safe**
+direction: the card holds its full projected width and only shrinks in height. Negative is the
+expensive one — perspective magnifies the approaching edge, so `−20°` put a 3681px card into a
+1152px column. **Backward is available but has to stay tiny: about 2.6° is the most that fits before
+it spills past the gutters.** A _longer_ `--persp` is what makes backward affordable, at the cost of
+a flatter trapezoid.
+
+**The ramp rises forward from the focused card.** The card at the front of the pile leans forward
+14°, and every card after it leans a little further forward (4° per card), capped at 26° — settling
+at `14, 18, 22, 26, 26, 26, 26`. Nothing _before_ the focused card is touched, because `--pile` is
+0-based and the focused card is pile 0 — so "the cards above the focused card keep its tilt" is
+automatic. (Making the _pointed-at_ card the focus would need a focus-relative ramp, which is the
+unstable thing described below.)
+
+A rising ramp is safe _here_ even though it used to collapse the pile: a forward card is a **shorter**
+card, and visual overlap is `projHeight − band`, so each forward step eats into the seam. It holds
+because the tail band is now only ~7% of the card, which absorbs the step. The old failure was the
+opposite shape at a 46–77px band.
+
+Everything below still holds:
 
 - **`--persp` has to stay short.** The visible trapezoid is roughly
   `(card height × sin(rake)) / perspective`, so a long projection makes even a large rake
   invisible. That is why the reference uses `20vw` where it does use one, and why this file uses
-  `clamp(340px, 32vw, 880px)`. Reaching for `1000px` here silently flattens the deck again.
+  `clamp(340px, 32vw, 880px)`. Reaching for `1000px` here silently flattens the deck.
+- **`--persp-origin` must be the card's TOP EDGE (`50% 0%`).** It used to be `50% 45%`, which put
+  the vanishing point _below_ the band the type occupies — so a receding card pushed its own
+  top-row type **downward**, toward the seam, and the tighter the tail band the worse it got.
+  Measured tail-type clearance at `45%`: `+10px` at 390 wide, `+2` at 1280, `0` at 1440, `−8` at
+  1920, `−18` at 2560 — the type was buried on any large display. At `0%` the same sweep reads
+  `+14, +23, +25, +29, +34`. It also matches `transform-origin: center top`: the card narrows as it
+  recedes rather than pivoting about a point inside its own middle.
 - **The rake is keyed to `--pile` — the card's fixed place in the pile — never to the focus.**
   Making it follow the pointer is unstable, because un-rakening a card re-geometries the deck while
   the pointer is over it, so the card beneath the cursor keeps changing. Measured with a
   focus-relative ramp: a **stationary pointer walked the focus from card 4 to card 6 unaided.**
-- **`--overlap` has to stay well under the card height**, raked or not: the band a covered card
-  keeps is `card height − --overlap`, and at zero the card is invisible and unclickable. The phone
-  breakpoint caps the overlap at a third of the card height for exactly that reason.
+- **The overlap has to stay well under the card height**, tiered or not: the band a covered card
+  keeps is `card height − overlap`, and at zero the card is invisible and unclickable.
 
-For the record, on the reference itself: its **index items carry no 3D of their own**, which is why
-`--rake` defaults to 0. The origin and sign the raked mode borrows come from the transforms the
-reference does have — `.ShowcaseView_picture` (`transform-origin: top; rotateX(-1.5deg)`) and
-`.GalleryView_item > picture` (`transform-origin: top; rotateX(-5deg)`), both inside
-`perspective: 20vw` — and from `.NextProject_picture`, which takes the same sign the long way round
+For the record, on the reference itself: its **index items carry no 3D of their own**. The origin
+and sign the raked mode borrows come from the transforms it does have — `.ShowcaseView_picture`
+(`transform-origin: top; rotateX(-1.5deg)`) and `.GalleryView_item > picture`
+(`transform-origin: top; rotateX(-5deg)`), both inside `perspective: 20vw` — and from
+`.NextProject_picture`, which takes the same sign the long way round
 (`transform-origin: center bottom; rotateX(progress × 50deg − 90deg)`, so progress 0 is edge-on and
 invisible). Its one index-level depth cue is `filter: grayscale(1)` on whatever you are not
 pointing at. There is **no `rotateY` anywhere** in that stylesheet, so nothing here leans
@@ -209,48 +246,55 @@ never consults JS, so the pointer and the keyboard can no longer fight over it.
 ```
 --card-w             card width (100% = the content column)
 --aspect             card ratio; this is what sets the height. 7/5 is the reference's
---overlap            how much of a card the next one covers
---label-lift         where the bottom-anchored type sits — --overlap + a gap, NOT 0
+--overlap            the focused card's exposure, as a % of card WIDTH
+--overlap-tail       every card after it, as a % of card WIDTH
+--overlap-h          ← derived per card: the same distance on the HEIGHT axis (× 7/5)
+--label-lift         where the bottom-anchored type sits — --overlap-h + a gap, NOT 0
 --fan-spread         how far the tail opens on hover
 --dur-fan            fan transition duration
 --ease-spring        the fan's overshoot curve
 --rake               0 = flat (the reference). 1 = the raked deck. A FACTOR, not an angle
---tilt-focus/-step/-max   the rake ramp; read only while --rake is non-zero
+--tilt-focus         the card at the front of the pile
+--tilt-step          how much further forward each card after it leans
+--tilt-max           the forward cap
+--tilt-min           the backward floor — a hard geometric limit, not taste
 --persp              projection depth, applied per card. SHORT on purpose — see above
---persp-origin       the vanishing point within each card
+--persp-origin       the vanishing point; keep it at the card's TOP EDGE
 ```
 
 All of them live at the top of `fan.css`. The only JS-set values are `--pile` (the card's fixed
 position in the pile, read only by the rake) and the `z-index` paint order; the fan's `--fan-y` is
 set by the sibling rules in `fan.css`.
 
-Verified flat (`--rake: 0`) with 7 cards — no horizontal overflow at any size:
+Verified with `--rake: 1` and 7 cards — **no horizontal overflow at any size**:
 
-| Viewport | Card     | Band  | Label clearance |
-| -------- | -------- | ----- | --------------- |
-| 1440×900 | 1312×937 | 775px | 18–19px         |
-| 1280×900 | 1152×823 | 661px | 18–19px         |
-| 390×844  | 351×251  | 153px | 12–13px         |
-| 320×568  | 288×206  | 125px | 12px            |
-| 844×390  | 760×242  | 153px | 14–15px         |
+| Viewport  | Card (layout) | Focused band | Tail band | Tail label clearance |
+| --------- | ------------- | ------------ | --------- | -------------------- |
+| 1920×1080 | 1792×1280     | 707px        | 133px     | 29–37px              |
+| 1440×900  | 1312×937      | 518px        | 97px      | 25–31px              |
+| 1280×900  | 1152×823      | 455px        | 85px      | 23–28px              |
+| 844×390   | 760×543       | 215px        | 49px      | 15–17px              |
+| 390×844   | 351×251       | 132px        | 54px      | 14–16px              |
+| 320×568   | 288×206       | 107px        | 45px      | 13–15px              |
 
-"Label clearance" is how far the bottom-anchored type sits above the next card's top edge. It has
-to stay positive on every card but the last, and does at every size. Re-check it after any change
-to `--overlap`, `--label-lift` or `--aspect`: a negative value means the label is buried under the
-next card. A card shorter than `--overlap` is the same failure in its worst form — the card
-vanishes and cannot be clicked.
+"Label clearance" is how far the bottom-anchored type sits above the next card's top edge, and it
+has to stay positive on every card but the last. **It is the first thing to break** — it was
+negative at 1920 and 2560 before `--persp-origin` moved to the top edge — so re-check it after any
+change to `--overlap`, `--label-lift`, `--aspect` or `--persp-origin`. A card shorter than its own
+overlap is the same failure in its worst form: the card vanishes and cannot be clicked.
 
-One trap when re-verifying interactively: **the fan is a CSS transition, so it does not advance
-while the page is not visible.** A probe on a background tab reads the transform as the identity
-matrix even though `--fan-y` is correctly set on the tail. Inject
-`* { transition: none !important }` before measuring — that is how the numbers above were taken.
+Two traps when re-verifying interactively. **The fan is a CSS transition, so it does not advance
+while the page is not visible** — a probe on a background tab reads the transform as the identity
+matrix even though `--fan-y` is correctly set on the tail; inject `* { transition: none !important }`.
+And **measure the card or the `.fan__flip`, never the `<li>`** — the fan is a transform on a child,
+so the `<li>`'s rect never moves and a hover check against it reports a false all-zeros.
 
 ### Three traps worth knowing before you touch this
 
-**Both ramps in `.fan__scrim` are measured in `--overlap` / `--label-lift`, not in percentages.**
-The covered strip _is_ `--overlap` tall and the type sits at `--label-lift`, just above it, so a
-percentage ramp darkens exactly the strip the next card paints over — the part nobody can see — and
-leaves the type sitting on bare photograph.
+**The `.fan__scrim` ramps are measured against `--band` — the strip a card actually leaves showing,
+`100% - --overlap-h` — never against `--overlap`.** Those were the same thing while every band was
+uniform; now that the tail is drawn up tight, `--overlap` reaches most of the way up the card, so a
+ramp measured against it would darken the whole band and leave the type on bare photograph.
 
 **The `<li>` must not be hit-testable.** `.fan__item` carries `pointer-events: none` and
 `.fan__card` puts it back. Dormant while `--rake` is 0, because the two boxes then coincide, but
