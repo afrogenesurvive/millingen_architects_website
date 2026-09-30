@@ -24,31 +24,95 @@ const ITEMS = [
     : []),
 ];
 
+/* ---- preferences -----------------------------------------------------------
+ * The hover peel. Stored rather than kept for the session, because it is a SETTING — the
+ * deck's `nav:last` in fan.js is the other kind, a position. */
+const PEEL_KEY = "pref:peel";
+
+const readPeel = () => {
+  try {
+    return localStorage.getItem(PEEL_KEY) === "on";
+  } catch {
+    return false; /* private mode / storage disabled — the default */
+  }
+};
+
+const writePeel = (on) => {
+  try {
+    localStorage.setItem(PEEL_KEY, on ? "on" : "off");
+  } catch {
+    /* storage unavailable — the switch still works for this page view */
+  }
+};
+
+/* The deck reads this off the root element in CSS (`[data-peel="on"] …`), so nothing has
+ * to pass it around and the deck does not have to know the switch exists. */
+const applyPeel = (on) => {
+  document.documentElement.dataset.peel = on ? "on" : "off";
+  return on;
+};
+
 export function mountMenu() {
   const btn = document.getElementById("menuBtn");
   const panel = document.getElementById("menuPanel");
   let open = false;
 
+  /* THE ONE PREFERENCE SO FAR, and the reason it is read here rather than in fan.js: the
+   * switch that owns it lives in this panel. Applying it here is also early enough —
+   * mountMenu() runs before render() in main.js, so the attribute is on the document before
+   * the deck's first paint.
+   *
+   * OFF is the default: the deck is stepped by the scroll, the drag and the arrow keys, and
+   * the peel is a decoration on top of that. A visitor who wants it can say so, and the
+   * choice is remembered. */
+  let peel = applyPeel(readPeel());
+
+  const peelSwitch = el(
+    "button",
+    {
+      class: "popover__link popover__switchrow",
+      type: "button",
+      role: "switch",
+      "aria-checked": String(peel),
+    },
+    el(
+      "span",
+      { class: "popover__switchtext" },
+      el("span", { class: "popover__label" }, "Fan the pile on hover"),
+      el("span", { class: "popover__note" }, "Point at a card to open the ones below it")
+    ),
+    el("span", { class: "popover__switch", "aria-hidden": "true" })
+  );
+
+  peelSwitch.addEventListener("click", () => {
+    peel = applyPeel(!peel);
+    writePeel(peel);
+    peelSwitch.setAttribute("aria-checked", String(peel));
+  });
+
   panel.replaceChildren(
     el(
       "ul",
       { class: "popover__list" },
-      ITEMS.map((it) =>
-        el(
-          "li",
-          { class: it.gap ? "popover__item--gap" : null },
+      [
+        ...ITEMS.map((it) =>
           el(
-            "a",
-            {
-              class: "popover__link",
-              href: it.href,
-              ...(it.external ? { "data-external": "", target: "_blank", rel: "noopener" } : {}),
-            },
-            el("span", { class: "popover__label" }, it.label),
-            it.note ? el("span", { class: "popover__note" }, it.note) : null
+            "li",
+            { class: it.gap ? "popover__item--gap" : null },
+            el(
+              "a",
+              {
+                class: "popover__link",
+                href: it.href,
+                ...(it.external ? { "data-external": "", target: "_blank", rel: "noopener" } : {}),
+              },
+              el("span", { class: "popover__label" }, it.label),
+              it.note ? el("span", { class: "popover__note" }, it.note) : null
+            )
           )
-        )
-      )
+        ),
+        el("li", { class: "popover__item--gap" }, peelSwitch),
+      ]
     )
   );
 

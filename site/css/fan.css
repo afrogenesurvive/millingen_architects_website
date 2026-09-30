@@ -2,9 +2,9 @@
  * fan.css — the portfolio nav: a FULL-BLEED STACKED DECK.
  *
  * Cards overlap in a single column like a pile of prints. Each card pulls the
- * next one up by --overlap (a negative margin-block-end), so a covered card keeps
- * only the band the card in front does not sit on — and that band is where its
- * own name and category are painted.
+ * next one up by its own `--band-here` (a negative margin-block-end), so a covered
+ * card keeps only the band the card in front does not sit on — and that band is
+ * where its own name and category are painted.
  *
  * This is the reference's index geometry. On group8.ch:
  *   .ListView_item                        { margin-bottom: -24rem }
@@ -28,12 +28,31 @@
  * JS-set `--pile` all stay in place and simply go inert at 0, because
  * `rotateX(0deg)` is the identity.
  *
- * The deck is in ordinary document flow: no fixed aperture, no nested scroller,
- * no scroll-snap and no wheel handling, so it cannot hijack the scroll.
+ * THE DECK IS A FIXED APERTURE, AND THE PILE'S TOTAL HEIGHT IS AN INVARIANT.
+ * `.page--home` is `position: fixed; inset: 0; overflow: hidden`, and the two band
+ * values are chosen so that the sum of every band is EXACTLY `--deck-h`:
+ *
+ *     --band-focus + (--count - 1) * --band-tail  ==  --deck-h
+ *
+ * So the pile fills the window at every focus, nothing can scroll, and no part of
+ * the deck ever needs translating or measuring in JS. The LAST card carries a band
+ * like all the others (there is no `:last-child` margin override any more), so its
+ * body is clipped by the aperture instead of pushing the pile past the deck height.
+ *
+ * This reverses what the file used to say. The window was an ordinary scrolling
+ * document and the deck could not hijack the scroll; it is now the opposite by
+ * design, and the wheel, a touch drag and the arrow keys all step the focus one
+ * card per gesture.
  *
  * Geometry contract with fan.js:
+ *   --count  how many cards the deck has to fit. JS writes it from the project list;
+ *            the CSS fallback is 7. It drives the band height, so it MUST stay >= 2
+ *            — see the division in --band-tail.
  *   --pile   the card's FIXED place in the pile. Set by JS. Drives the rake only,
- *            and only while `--rake` is non-zero.
+ *            and only while `--rake` is non-zero — and the BAND, through --tier.
+ *   --focus  which card the deck is built around: the BAND (which card is exposed),
+ *            the two tilt classes and every type metric read it. Written by the
+ *            keyboard cursor and by the wheel / drag stepping, never by hover.
  *   z-index  set once at build — LATER cards paint over EARLIER ones, which is what
  *            keeps a covered card's visible band its TOP edge.
  *
@@ -41,50 +60,96 @@
  * below. That is the only transform input JS does not touch.
  * ========================================================================== */
 
+/* THE APERTURE. Fixed, the full window, its own overflow hidden — so the home view
+ * never scrolls and nothing the pile does can escape the frame. The horizontal
+ * gutter is kept from `.page` (the deck spans the content column); the block padding
+ * is not, because the pile starts at `--deck-top` and is `--deck-h` tall. */
 .page--home {
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  padding-block-end: 0;
-}
+  position: fixed;
+  inset: 0;
+  display: block;
+  padding-block: 0;
+  overflow: hidden;
 
-.page--home .page__head {
-  margin-bottom: 2rem;
+  /* The deck owns BOTH pan axes — a flick in any direction has to step the deck, not
+   * move the page — so `pan-x` is not enough: `pinch-zoom` on its own allows pinch and
+   * nothing else. It is named explicitly so taking the pan axes away does NOT also take
+   * pinch-to-zoom away. */
+  overscroll-behavior: none;
+  touch-action: pinch-zoom;
 }
 
 /* --------------------------------------------------------------- the deck -- */
 
 .fan {
   /* -------- the only knobs you need to tune the deck --------
-   * Both overlaps are PERCENTAGES, and that is load-bearing. A percentage in
-   * `margin-block-end` resolves against the containing block's INLINE size, which
-   * here IS the card width — and the card's height is 5/7 of that width. So a
-   * percentage overlap scales with the card instead of going stale: a vh-based one
-   * silently exceeds the card height on a wide-but-short window and the band goes
-   * negative. `--overlap-h` (set on .fan__item) restates the result against the
-   * card HEIGHT, which is the base `inset-block-end` and gradient stops use — same
-   * distance, other axis, hence the 7/5. */
+   * THE BAND IS THE LAYOUT UNIT. Card i's advance down the pile is `--band-here`,
+   * and since the next card is pulled up over the rest of card i, `--band-here` IS
+   * the strip of card i that stays visible. The two values below are chosen so the
+   * sum of all the bands is exactly `--deck-h`:
+   *
+   *     --band-focus + (--count - 1) * --band-tail  ==  --deck-h
+   *
+   * That invariant is what makes this a fixed, unscrollable aperture. It holds for
+   * every focus, so moving the focus never changes the pile's height.
+   *
+   * The bands are LENGTHS in deck-height units, not percentages of the card width as
+   * they used to be. The percentages existed because the card's height came only from
+   * its width and the page scrolled; here the deck HEIGHT is the master constraint,
+   * so the bands have to be stated against it. The card still takes its own height
+   * from `--aspect` — the margin on .fan__item is the one place that ratio is used. */
   --card-w: 100%; /* the stack spans the content column */
   --aspect: 7 / 5; /* the reference's picture ratio */
 
-  /* TWO-TIER BAND. The card you are LOOKING AT is left mostly exposed and every
-   * OTHER card is pulled much further up, so the deck reads as one open card plus a
-   * tight stack of thin bands rather than a column of heroes.
-   * WHICH card that is comes from `--focus`, not from the card's place in the pile:
-   * focus a card mid-pile and the deck closes up above it. 32% leaves the focused
-   * card ~55% of its height showing; 64% leaves the rest ~7%, a band of roughly
-   * 70-100px at desktop widths. */
-  --overlap: 32%;
-  --overlap-tail: 64%;
+  /* The window the pile has to fill. `--deck-top` clears the fixed site bar, which
+   * must never cover a card: at the ten-card density the topmost band is shorter than
+   * the bar, so that card would vanish underneath it. `svh` is the SMALL viewport
+   * height, so the deck does not resize under iOS Safari's URL bar. Declared inline
+   * rather than behind a `100vh` fallback, because a custom property is not validated
+   * at parse time — a fallback declaration would never lose. */
+  --count: 7; /* overwritten by fan.js from the project list; never below 2 */
+  --deck-top: calc(var(--bar-h) + env(safe-area-inset-top));
+  --deck-h: calc(100svh - var(--deck-top) - env(safe-area-inset-bottom));
 
-  --fan-spread: clamp(80px, 13vh, 124px); /* the one-way push on hover */
+  /* HOW MUCH OF THE DECK THE EXPOSED CARD GETS; every other card takes an equal share
+   * of what is left. 0.42 at 1280x900 is a 351px exposed card and an 81px band for
+   * each of the other six; at ten cards those bands are 54px, which still clears a
+   * 24px title plus its gap.
+   * It MUST stay low enough that `--band-focus` is not taller than the card itself —
+   * past that point `margin-block-end` goes POSITIVE and the pile grows a gap. Portrait
+   * windows are where that bites (the card is only 5/7 of a narrow column), so the
+   * media queries at the foot of this file lower this rather than let the band formula
+   * cap it. A `min()` cap cannot do the job: a percentage inside a custom property
+   * resolves against the WIDTH in a margin and against the HEIGHT in an inset, so one
+   * capped value cannot serve both. */
+  --focus-frac: 0.42;
+  --band-focus: calc(var(--deck-h) * var(--focus-frac));
+  /* The `max()` is a floor for a degenerate window (a bar taller than the viewport)
+   * where the subtraction could go negative and invert the whole pile. */
+  --band-tail: max(0px, calc((var(--deck-h) - var(--band-focus)) / (var(--count) - 1)));
+
+  /* The one-way push on hover, as a FRACTION OF A BAND. It used to be a viewport clamp
+   * sized for a scrolling document, where pushing the tail down merely made the page
+   * taller. Here the aperture clips, so the peel is bounded by what the frame can
+   * afford — and the binding constraint is the LAST card, whose band ends exactly on the
+   * fold and whose name therefore has only a little room under it. Measured headroom
+   * between the last label's projected bottom and the fold, as a fraction of a band:
+   * 0.44-0.48 on desktop (37px at 81 band, 58px at 133), but only 0.24 on a short
+   * landscape phone (9px at a 38px band) — the tail rake is much shallower there, so the
+   * label is compressed less. 0.22 is under every one of those, and it still reads as the
+   * pile settling under the pointer. A larger peel pushes the last card's name through
+   * the fold and cuts it in half. */
+  --fan-spread: max(6px, calc(var(--band-tail) * 0.22));
 
   /* -------- transitions --------
-   * The spring is the reference's own: y2 = 1.3, so the cards overshoot their
-   * target and settle back. With a plain ease-out a 124px push reads as a simple
-   * slide and the whole character of the gesture is lost. */
-  --dur-fan: 600ms;
-  --ease-spring: cubic-bezier(0.1, 0.2, 0.165, 1.3);
+   * SLOW AND EVEN. The reference's own curve was a spring (y2 = 1.3) that overshoots
+   * and settles back; over a full-length travel between two focus states that reads as
+   * a wobble, so the deck uses a long decelerating ease with no overshoot. The band is
+   * LAYOUT and cannot animate off the compositor the way the transforms can, so it
+   * carries a transition of its own in `.fan--stepping .fan__item` below — armed only
+   * while a step is in flight, or it would also fire on every window resize. */
+  --dur-fan: 1000ms;
+  --ease-fan: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* -------- the rake --------
    * `--rake` is a 0-1 FACTOR over the whole ramp, not an angle, so one value still
@@ -173,7 +238,11 @@
   display: flex;
   flex-direction: column;
 
+  /* The pile is `--deck-h` tall — this is the box the band invariant is measured
+   * against — and it begins below the fixed site bar. */
+  height: var(--deck-h);
   margin: 0;
+  margin-block-start: var(--deck-top);
   padding: 0;
   list-style: none;
 }
@@ -184,22 +253,25 @@
 .fan__item {
   --pile: 0; /* this card's FIXED place in the pile — set by JS */
 
-  /* How much the NEXT card covers of this one. The tier switch is a DISTANCE test
-   * against the focus — 0 on the focused card, 1 on every other card — so the
-   * exposed card is whichever one is focused, not the one at the front of the pile.
+  /* THIS CARD'S BAND: the strip of it that stays visible, and how far the next card
+   * sits below it. The tier switch is a DISTANCE test against the focus — 0 on the
+   * focused card, 1 on every other card — so the EXPOSED card is whichever one is
+   * focused rather than the one at the front of the pile, and every other card is
+   * drawn up tight. That is also why the exposed card needs no class of its own: at
+   * --tier 0 this expression IS --band-focus.
    * `max(a - b, b - a)` is `abs(a - b)` without abs(), which is still not safe to
-   * lean on everywhere. */
+   * lean on everywhere. The two band values themselves live on `.fan`, where the
+   * deck-height invariant is stated. */
   --tier: min(1, max(var(--pile) - var(--focus, 0), var(--focus, 0) - var(--pile)));
-  --overlap-here: calc(var(--overlap) + var(--tier) * (var(--overlap-tail) - var(--overlap)));
-
-  /* ...restated against the card HEIGHT, for the type anchor and the scrim. */
-  --overlap-h: calc(var(--overlap-here) * 7 / 5);
+  --band-here: calc(var(--band-tail) + (1 - var(--tier)) * (var(--band-focus) - var(--band-tail)));
 
   /* The gap that keeps the overlaid type clear of the strip the next card paints
-   * over. Per-card, and measured against the card HEIGHT — so --overlap-h, not
-   * --overlap. The upshot: the type always lands the same small gap above the
-   * seam, whether the card is the focused one or a thin band in the tail. */
-  --label-lift: calc(var(--overlap-h) + clamp(0.7rem, 1.6vw, 1.1rem));
+   * over, stated as a FRACTION OF THE BAND. That is what makes label clearance
+   * structural rather than tuned: clearance is band - gap - type, and both of those
+   * now scale with the band, so it stays positive at any density. It used to be a
+   * viewport `clamp()`, which is how it came to be negative on big screens and the
+   * first thing to break after any geometry change. */
+  --label-gap: clamp(4px, calc(var(--band-here) * 0.16), 1.1rem);
 
   /* Distance from the focused card: negative before it, 0 on it, positive after.
    * The two tilt classes below are this same split, stated per card. */
@@ -225,8 +297,21 @@
   width: var(--card-w);
   max-width: 100%;
 
+  /* A card must never be shrunk. `.fan` is a flex column with a definite height, so
+   * `flex-shrink: 1` would quietly squash every card the moment the bands summed to
+   * more than the deck. */
+  flex: 0 0 auto;
+
+  /* The band is LAYOUT, so it cannot animate off the compositor the way the transforms
+   * on .fan__flip do. Its transition therefore lives in its own rule below and is armed
+   * only while a step is in flight — see .fan--stepping. */
+
   margin-block-start: 0;
-  margin-block-end: calc(-1 * var(--overlap-here));
+  /* NEGATIVE BY `card height - band`: this card keeps `--band-here` of itself and the
+   * next card is pulled up over the rest. In a `margin`, `100%` resolves against the
+   * containing block's INLINE size — the card WIDTH — so `100% * 5 / 7` IS the card
+   * height, and this is the one place the 7/5 ratio is hard-coded. */
+  margin-block-end: calc(var(--band-here) - 100% * 5 / 7);
 
   /* A transparent box still hit-tests, and the <li> is the one box in the pile that
    * is NOT foreshortened: it keeps its full height while the card inside it
@@ -237,6 +322,16 @@
    * while `--rake` is 0 (the two boxes then coincide), but keep it: it is
    * load-bearing again the moment the rake comes back. */
   pointer-events: none;
+}
+
+/* The band, animated — but ONLY while a step is in flight, because this is the one
+ * animation in the deck that has to touch layout. `.fan--stepping` is added by JS for
+ * the duration of a step and then removed. Left on permanently it would also fire on a
+ * window resize or a change of density, since both re-solve every margin at once, and
+ * the deck would visibly trail the window by up to a second. Without it the exposed
+ * card's band snaps while everything else glides, which reads as a dropped frame. */
+.fan--stepping .fan__item {
+  transition: margin-block-end var(--dur-fan) var(--ease-fan);
 }
 
 /* ---------------------------------------------------------------------------
@@ -270,10 +365,10 @@
   --persp: var(--persp-back);
 }
 
-/* nothing pulls the last card up, so nothing overlaps it */
-.fan__item:last-child {
-  margin-block-end: 0;
-}
+/* NOTE: the last card takes its band like every other one. It used to carry
+ * `margin-block-end: 0` so that nothing overlapped it, but that added its FULL height
+ * to the pile and the total stopped matching `--deck-h`. Its body is clipped by the
+ * aperture instead — which is where the deck's "overflow below is hidden" comes from. */
 
 /* The fan, then the rake. Both are transforms, so neither moves any layout: the
  * pile's positions stay put, the deck cannot grow a gap at its end, and the page
@@ -292,35 +387,51 @@
    * projects smaller, giving the top-wider-than-bottom trapezoid. */
   transform-origin: center top;
   transform: translateY(var(--fan-y)) rotateX(calc(-1 * var(--rake-deg)));
-  transition: transform var(--dur-fan) var(--ease-spring);
+  transition: transform var(--dur-fan) var(--ease-fan);
 }
 
-/* Pointing at the deck opens the fan BELOW the pointer — and only below it. This
- * mirrors `.ListView_item:hover ~ .ListView_item { translate3d(0, 12.4rem, 0) }`
- * exactly: the pointed-at card and everything ABOVE it stay put, the tail below
- * moves down by one `--fan-spread`, and it moves uniformly rather than
- * cumulatively, so the deck's overhang is capped at one spread instead of
- * (n-1) x spread. The gesture reads as the card under the pointer peeling open at
+/* THE PEEL IS OFF BY DEFAULT, and a switch in the menu turns it on — the `[data-peel]`
+ * attribute on the root element is that switch, written by menu.js. It is off because the
+ * deck's job is to be STEPPED: the scroll, the drag and the arrow keys each move it exactly
+ * one card, and a pile that opens a little every time the pointer crosses a card competes
+ * with that. With the peel off, pointing at a card still accents its name and fades in the
+ * "→" badge — nothing moves.
+ *
+ * ON, it mirrors the reference's own `.ListView_item:hover ~ .ListView_item { translate3d(0,
+ * 12.4rem, 0) }`: the pointed-at card and everything ABOVE it stay exactly where they are,
+ * and only the tail below moves, by one `--fan-spread`. Because the movement is uniform
+ * rather than cumulative, the deck's overhang is capped at one spread instead of
+ * `(n - 1) x spread`, and the gesture reads as the card under the pointer peeling open at
  * its bottom edge.
  *
- * Gated on hover:hover, as the reference is, so a stuck :hover on a touch device
- * cannot leave the deck hanging open. */
-@media (hover: hover) {
-  .fan__item:has(.fan__card:hover) ~ .fan__item .fan__flip {
-    --fan-y: var(--fan-spread);
-  }
+ * The only input is `--fan-y`, set by the sibling rules below rather than from JS, which is
+ * what keeps the push one-way and the whole gesture on a single CSS transition.
+ *
+ * `@media (hover: hover)` is the reference's own gate, so a stuck `:hover` on a touch device
+ * cannot leave the deck hanging open. The `:focus-visible` rule is deliberately OUTSIDE that
+ * query, because a touch device still has a keyboard. */
+[data-peel="on"] .fan__item:has(.fan__card:focus-visible) ~ .fan__item .fan__flip {
+  --fan-y: var(--fan-spread);
 }
 
-/* Keyboard gets the same one-way push, from the card the cursor is on. Outside
- * the media query on purpose — a touch device still has a keyboard. */
-.fan__item:has(.fan__card:focus-visible) ~ .fan__item .fan__flip {
-  --fan-y: var(--fan-spread);
+@media (hover: hover) {
+  [data-peel="on"] .fan__item:has(.fan__card:hover) ~ .fan__item .fan__flip {
+    --fan-y: var(--fan-spread);
+  }
 }
 
 /* ------------------------------------------------------------------ card --- */
 
 .fan__card {
   position: relative; /* containing block for the image and the overlaid type */
+
+  /* Where the overlaid type's bottom edge sits: the card's own covered strip plus the
+   * band-proportional gap. `100%` here is the card's FULL height, because that is what
+   * a percentage means in `inset-block-end` — so `100% - band` is exactly the strip the
+   * next card paints over. Stated on the card, where the labels' containing block is,
+   * and inherited by all five of them. */
+  --label-anchor: calc(100% - var(--band-here) + var(--label-gap));
+
   display: block;
   width: 100%;
   /* The height comes from the picture, as it does on the reference
@@ -381,18 +492,17 @@
 /* One gradient set, two jobs: legibility for the overlaid type, and the soft edge
  * that makes the next card look like it slides over this one's bottom strip.
  *
- * Both ramps are measured against --band — the strip this card actually leaves
- * showing, `100% - --overlap-h` — and NOT against --overlap. Those were the same
- * thing while every band was uniform; now that the tail is drawn up tight,
- * --overlap reaches most of the way up the card, so a ramp measured against it
- * would darken the whole band and leave the type on bare photograph. */
+ * Both ramps are measured against --band-here, which IS the strip this card leaves
+ * showing. That used to be a derivation (`100% - --overlap-h`) because the overlap
+ * was the layout value; the band is the layout value now, so the ramp reads it
+ * straight. */
 .fan__scrim {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /* max() guards the degenerate case — an overlap at or beyond the card height
-   * would put the stops in reverse order and the gradient would invert. */
-  --band: max(0px, calc(100% - var(--overlap-h)));
+  /* max() guards the degenerate case — a band at or below zero would put the stops in
+   * reverse order and the gradient would invert. */
+  --band: max(0px, var(--band-here));
   background:
     linear-gradient(to bottom, rgba(11, 11, 15, 0.45), rgba(11, 11, 15, 0) calc(var(--band) * 0.45)),
     linear-gradient(to bottom, rgba(11, 11, 15, 0) calc(var(--band) * 0.5), rgba(11, 11, 15, 0.85) var(--band));
@@ -404,10 +514,11 @@
  * that is the reference's signature move (`EN COURS` / `BELLE-TERRE` over the
  * photograph).
  *
- * The bottom anchor is --label-lift, not 0. The NEXT card paints over this card's
- * bottom --overlap, so anything pinned flush to the bottom edge is hidden; lifting
- * the type by the overlap puts it on the last band of image the pile actually
- * leaves showing, which for a covered card is the only band there is. */
+ * The bottom anchor is the card's COVERED STRIP plus a gap, not 0. The NEXT card
+ * paints over the bottom of this card, so anything pinned flush to the bottom edge is
+ * hidden; the type has to land on the last band of image the pile actually leaves
+ * showing, which for a covered card is the only band there is. See --label-anchor on
+ * .fan__card, which is where that distance is worked out. */
 .fan__title,
 .fan__cat,
 .fan__tag,
@@ -418,10 +529,12 @@
 }
 
 .fan__title {
-  inset-block-end: var(--label-lift);
+  inset-block-end: var(--label-anchor);
   inset-inline-start: clamp(0.85rem, 2vw, 1.5rem);
   max-width: 74%;
-  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  /* Sized from the band, like the gap is: a viewport clamp cannot know whether the
+   * band it has to sit in is 90px or 25px. */
+  font-size: clamp(0.72rem, calc(var(--band-here) * 0.38), 1.5rem);
   line-height: 1;
   letter-spacing: -0.02em;
   text-transform: uppercase;
@@ -429,7 +542,7 @@
 }
 
 .fan__cat {
-  inset-block-end: var(--label-lift);
+  inset-block-end: var(--label-anchor);
   /* inset past the "→" badge, which only fades in on hover — the gap is always
    * there so the category never shifts when the badge appears. */
   inset-inline-end: calc(clamp(0.85rem, 2vw, 1.5rem) + 2.9rem);
@@ -467,7 +580,7 @@
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  inset-block-end: var(--label-lift);
+  inset-block-end: var(--label-anchor);
   inset-inline-end: clamp(0.85rem, 2vw, 1.5rem);
   width: 2.4rem;
   height: 2.4rem;
@@ -510,11 +623,8 @@
  * (width x 5/7), so cap the overlap at roughly a third of it. */
 @media (max-width: 560px) {
   .fan {
-    /* the overlaps are percentages now, so they scale with the card on their own;
-     * only the band PROPORTIONS need a nudge, because a phone card is short in
-     * absolute terms and the tail band would get too thin to hold its type */
-    --overlap: 34%;
-    --overlap-tail: 56%;
+    /* Only the rake ramp needs a nudge at this width — the bands are sized from the
+     * deck height, so they need no breakpoint of their own. */
     --tilt-step: 4deg;
     --tilt-max: 22deg;
     --tilt-min: -2deg;
@@ -525,29 +635,34 @@
   }
 }
 
-/* landscape phone — very little vertical room, so cap the card's height and let
- * the pile shorten with it. */
+/* PORTRAIT / NARROW-AND-TALL. The card is only 5/7 of a narrow column, so the exposed
+ * band has to come down with it or `--band-focus` would be taller than the card and
+ * the pile would grow a gap. 3/5 covers every phone in portrait, and 0.28 keeps the
+ * exposed band inside the card even at 320x568, the smallest case measured. */
+@media (max-aspect-ratio: 3/5) {
+  .fan {
+    --focus-frac: 0.28;
+  }
+}
+
+/* SHORT AND WIDE — very little vertical room. At this height even ten bands are only
+ * ~25px, so the exposed card takes a smaller share to keep the rest usable. */
 @media (max-height: 520px) and (orientation: landscape) {
   .fan {
-    /* NO height cap here any more. Capping the card broke the 5/7 relationship the
-     * percentage overlaps rely on — the height came from the viewport instead of
-     * from the width — so --overlap-h disagreed with the real gap and buried the
-     * type outright (measured: label clearance -32 to -88px, i.e. every title
-     * under the next card). What has to fit a short viewport is the BAND, and the
-     * band is the overlap's job, so the card keeps its true ratio and only these
-     * percentages change. */
-    --overlap: 43%;
-    --overlap-tail: 65%;
+    --focus-frac: 0.3;
     --tilt-step: 4deg;
     --tilt-max: 22deg;
     --tilt-min: -2deg;
   }
 
-  .page--home .page__head {
-    margin-bottom: 0.6rem;
-  }
-
-  .page--home .page__lede {
+  /* A ~25px band cannot carry the chip row as well as its own name, and an 11px label
+   * forced into a band that short would be clipped by the card's own overflow anyway.
+   * The top-band labels and the hover badge are all aria-hidden decoration, so they are
+   * the first things to go. */
+  .fan__tag,
+  .fan__year,
+  .fan__cat,
+  .fan__go {
     display: none;
   }
 }

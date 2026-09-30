@@ -20,8 +20,9 @@ served from the repo root, the portfolio from `site/` (see `site/netlify.toml`).
 
 ### Portfolio site (`site/`)
 
-- Stacked-deck portfolio nav in perspective — hover to fan the pile open, arrows to step — see
-  [`site/README.md`](site/README.md)
+- Stacked-deck portfolio nav in perspective, filling the window with no page scroll — step it with
+  the scroll wheel / trackpad, a touch drag or the arrow keys (the hover fan is an option in the
+  menu) — see [`site/README.md`](site/README.md)
 - Deep-linkable project pages (`/project/<id>`): hero, facts list, prose, gallery, lightbox
 - About page (practice, services, policies, founder CV, contact) driven by one content file
 - Top-right menu popover, present on every page
@@ -44,16 +45,29 @@ serve the folder (any static server) for local preview.
 
 ## Running locally
 
-From the repo root:
+**The portfolio site** (`site/`) — serve `site/` itself as the document root. Its links, modules and
+assets are deliberately root-absolute (`/css/…`, `/js/main.js`, `/assets/…`), so serving the repo
+root and visiting `/site/` renders it unstyled with every asset 404ing:
+
+```sh
+cd site
+python3 -m http.server 8000
+```
+
+Then open [http://localhost:8000](http://localhost:8000). Refreshing on a deep link (`/project/001`,
+`/about`) needs an SPA fallback, which `python3 -m http.server` does not have — `npx serve -s site`
+from the repo root does, and is the closer match to production.
+
+**The presentation deck** (`presentation_site/`) — relative paths, so it works from either root:
 
 ```sh
 cd presentation_site
 python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000>.
+Then open [http://localhost:8000](http://localhost:8000).
 
-(Any static server works, e.g. `npx serve .` inside `presentation_site/`.)
+(Any static server works, e.g. `npx serve .` inside either folder.)
 
 ## Customizing the slides
 
@@ -74,7 +88,7 @@ to publish `presentation_site/` with no build step.
 
 ### Via the Netlify UI (recommended)
 
-1. Sign in at <https://app.netlify.com> → **Add new site** → **Import an existing project**.
+1. Sign in at [https://app.netlify.com](https://app.netlify.com) → **Add new site** → **Import an existing project**.
 2. Connect your Git provider (GitHub) and select this repository.
 3. Netlify picks up `netlify.toml`. If you prefer to set it manually:
    - **Build command**: leave empty (or `echo 'no build step'`)
